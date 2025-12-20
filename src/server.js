@@ -1,0 +1,129 @@
+/*eslint-disable*/
+if (input.action === 'createAttachmentAndReturnUrl') {
+    const recordId = '176536473116070522';
+    const tableId = '156698966100835946';
+    const { docxFileName } = input;
+    const { docxFileArrayBuffer } = input;
+    const mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const docId = ss.getDocIdByIds(tableId, recordId);
+    const attachmentService = new SimpleAttachment();
+    let binary = '';
+    const bytes = new Uint8Array(docxFileArrayBuffer);
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+
+    const base64 = attachmentService.base64Encode(binary);
+    const attachmentId = attachmentService.writeBase64(docId, docxFileName, base64, mimeType);
+    data.attachmentUrl = attachmentService.getAttachmentUrlById(attachmentId);
+} else if (input.action === 'fetchDocxScript') {
+    const sr = new SimpleRecord('sys_script');
+    sr.get('176538018815432077');
+    data.docxLibraryScript = sr.script;
+}
+else if (input.action === 'fetchItamTaskTypes') {
+    const tableSr = new SimpleRecord('sys_db_table');
+    tableSr.addQuery('parent_id.name', 'itam_tasks');
+    tableSr.selectAttributes(['title', 'name']);
+    tableSr.query();
+    data.tableTypes = [];
+    while (tableSr.next()) {
+        data.tableTypes.push({
+            sys_id: tableSr.sys_id,
+            name: tableSr.name,
+            title: tableSr.title,
+            columns: [],
+            relatedTables: [],
+        })
+    }
+
+    const relatedListArr = [];
+    const relatedListSr = new SimpleRecord('sys_ui_related_list');
+    relatedListSr.addQuery('table_id', 'in', data.tableTypes.map(({ sys_id }) => sys_id));
+    relatedListSr.selectAttributes(['table_id']);
+    relatedListSr.query();
+    while (relatedListSr.next()) {
+        relatedListArr.push({ table_id: relatedListSr.getValue('table_id'), sys_id: relatedListSr.sys_id });
+    }
+
+    const relatedListElementSr = new SimpleRecord('sys_ui_related_list_element');
+    relatedListElementSr.addQuery('related_list_id', 'in', relatedListArr.map(({ sys_id }) => sys_id));
+    relatedListElementSr.selectAttributes(['title', 'related_list_id', 'related_table_id', 'related_list_script_id']);
+    relatedListElementSr.query();
+
+    const relatedTablesArr = [];
+
+    while (relatedListElementSr.next()) {
+        const { table_id } = relatedListArr.find(({ sys_id }) => sys_id === relatedListElementSr.getValue('related_list_id'));
+        const table = data.tableTypes.find(({ sys_id }) => sys_id === table_id);
+
+        if (relatedListElementSr.getValue('related_table_id')) {
+            const relatedTableRecord = {
+                sys_id: relatedListElementSr.getValue('related_table_id'),
+                name: relatedListElementSr.related_table_id.name,
+                title: relatedListElementSr.related_table_id.title,
+                columns: [],
+                related_list_name: relatedListElementSr.title,
+                related_list_sys_id: relatedListElementSr.sys_id,
+                related_by_column: true,
+            };
+            table.relatedTables.push(relatedTableRecord);
+            relatedTablesArr.push(relatedTableRecord);
+        } else if (relatedListElementSr.getValue('related_list_script_id')) {
+            const { query_from } = relatedListElementSr.related_list_script_id;
+            const relatedTableRecord = {
+                sys_id: query_from.sys_id,
+                name: query_from.name,
+                title: query_from.title,
+                columns: [],
+                related_list_name: relatedListElementSr.title,
+                related_list_sys_id: relatedListElementSr.sys_id,
+                related_by_script: true,
+            };
+            table.relatedTables.push(relatedTableRecord);
+            relatedTablesArr.push(relatedTableRecord);
+        }
+    }
+
+    const columnSr = new SimpleRecord('sys_db_column');
+    columnSr.addQuery('table_id', 'in', [...data.tableTypes.map(t => t.sys_id), ...relatedTablesArr.map(({ sys_id }) => sys_id)]);
+    columnSr.addQuery('column_name', 'not in', ['sys_id']);
+    columnSr.selectAttributes(['column_name', 'title', 'table_id']);
+    columnSr.query();
+    while (columnSr.next()) {
+        const table = data.tableTypes.find(({ sys_id }) => sys_id === columnSr.getValue('table_id'));
+        const columnRecord = { sys_id: columnSr.sys_id, title: columnSr.title, name: columnSr.column_name };
+        if (table) {
+            table.columns.push(columnRecord);
+        }
+        const relatedTables = relatedTablesArr.filter(({ sys_id }) => sys_id === columnSr.getValue('table_id'));
+        for (const relatedTable of relatedTables) {
+            relatedTable.columns.push(columnRecord);
+        }
+    }
+
+} else if (input.action === "createDocxTemplate") {
+    const { docxBase64, selectTaskField, templateToRealValue, detectedTables } = input;
+    if (!selectTaskField.sys_id) {
+        return;
+    }
+
+    const resultJSON = JSON.stringify({ selectTaskField, templateToRealValue, detectedTables });
+
+    const docxTemplateSr = new SimpleRecord('itam_task_docx_template');
+    docxTemplateSr.setValue('task_table_id', selectTaskField.sys_id);
+    docxTemplateSr.setValue('template_data', resultJSON);
+    const docxTemplateSysId = docxTemplateSr.insert();
+    if (!docxTemplateSysId) {
+        ss.addErrorMessage('Failed to save template');
+        return;
+    }
+    const docId = ss.getDocIdByIds('176580796911236520', docxTemplateSysId);
+    const attachmentService = new SimpleAttachment();
+    const attachmentId = attachmentService.writeBase64(docId, 'template.docx', docxBase64, '.docx');
+    if (!attachmentId) {
+        ss.addErrorMessage('Failed to save base64 template');
+        return;
+    }
+    ss.addSuccessMessage(`Succesfully saved template! into <a href="/record/itam_task_docx_template/${docxTemplateSysId}">Ref to template</a>`);
+}

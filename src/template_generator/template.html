@@ -1,0 +1,8 @@
+<reference label="Template to use" model="data.currentTemplate" tableName="itam_task_docx_template" isMandatory="true"
+    condition="{data.condition}" readOnly="{data.isReferenceFieldReadOnly}" event-change="s_widget_custom.onReferenceChange();">
+</reference>
+
+<button buttonType="approve" disabled="{data.isGenerateButtonDisabled}" isVisible="true"
+    event-click="s_widget_custom.onGenerateButtonClick();">
+    Generate docx
+</button>

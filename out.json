@@ -1,0 +1,272 @@
+{
+    "selectTaskField": {
+        "sys_id": "168669266704175184",
+        "name": "itam_inventory",
+        "title": "Inventory Task"
+    },
+    "templateToRealValue": [
+        {
+            "template": "{{field_0}}",
+            "originalValue": "_____________________________________",
+            "value": {
+                "sys_id": "171472483910965827",
+                "name": "automated",
+                "title": "Automated"
+            }
+        },
+        {
+            "template": "{{field_1}}",
+            "originalValue": "____________",
+            "value": {
+                "sys_id": "168681385600586416",
+                "name": "inventory_documents_ids",
+                "title": "Inventory documents"
+            }
+        },
+        {
+            "template": "{{field_2}}",
+            "originalValue": "_________",
+            "value": {
+                "sys_id": "168681328502439375",
+                "name": "stock_id",
+                "title": "Stock"
+            }
+        },
+        {
+            "template": "{{field_3}}",
+            "originalValue": "____",
+            "value": {
+                "sys_id": "168681328502439375",
+                "name": "stock_id",
+                "title": "Stock"
+            }
+        },
+        {
+            "template": "{{field_4}}",
+            "originalValue": "____________________",
+            "value": {
+                "sys_id": "168681385600586416",
+                "name": "inventory_documents_ids",
+                "title": "Inventory documents"
+            }
+        },
+        {
+            "template": "{{field_5}}",
+            "originalValue": "__________________",
+            "value": {
+                "sys_id": "168681181708370497",
+                "name": "inventory_commission_ids",
+                "title": "Inventory commission"
+            }
+        },
+        {
+            "template": "{{field_6}}",
+            "originalValue": "____________________",
+            "value": {
+                "sys_id": "171472483910965827",
+                "name": "automated",
+                "title": "Automated"
+            }
+        },
+        {
+            "template": "{{field_7}}",
+            "originalValue": "__________________",
+            "value": {
+                "sys_id": "168681385600586416",
+                "name": "inventory_documents_ids",
+                "title": "Inventory documents"
+            }
+        },
+        {
+            "template": "{{field_8}}",
+            "originalValue": "___________________",
+            "value": {
+                "sys_id": "168958008703817380",
+                "name": "new_responsible_task_id",
+                "title": "New responsible task"
+            }
+        },
+        {
+            "template": "{{field_9}}",
+            "originalValue": "_________________",
+            "value": {
+                "sys_id": "168681311104170376",
+                "name": "location_id",
+                "title": "Location"
+            }
+        },
+        {
+            "template": "{{field_10}}",
+            "originalValue": "____________",
+            "value": {
+                "sys_id": "168681328502439375",
+                "name": "stock_id",
+                "title": "Stock"
+            }
+        },
+        {
+            "template": "{{field_11}}",
+            "originalValue": "_________________________________________________________",
+            "value": {
+                "sys_id": "168681181708370497",
+                "name": "inventory_commission_ids",
+                "title": "Inventory commission"
+            }
+        },
+        {
+            "template": "{{field_12}}",
+            "originalValue": "____",
+            "value": {
+                "sys_id": "168681385600586416",
+                "name": "inventory_documents_ids",
+                "title": "Inventory documents"
+            }
+        },
+        {
+            "template": "{{field_13}}",
+            "originalValue": "___",
+            "value": {
+                "sys_id": "168681328502439375",
+                "name": "stock_id",
+                "title": "Stock"
+            }
+        },
+        {
+            "template": "{{field_14}}",
+            "originalValue": "__________________________________",
+            "value": {
+                "sys_id": "171472483910965827",
+                "name": "automated",
+                "title": "Automated"
+            }
+        },
+        {
+            "template": "{{field_15}}",
+            "originalValue": "_____________________",
+            "value": {
+                "sys_id": "168681267900050438",
+                "name": "reason",
+                "title": "Reason"
+            }
+        }
+    ],
+    "detectedTables": [
+        {
+            "value": {
+                "sys_id": null,
+                "name": null,
+                "title": "--Undefined--",
+                "related_list_name": "--Undefined--",
+                "related_list_sys_id": null
+            },
+            "tableOrderIndex": 0,
+            "columns": [
+                {
+                    "template": "г. {{field_2}}",
+                    "value": {
+                        "sys_id": null,
+                        "name": null,
+                        "title": "--Undefined--"
+                    }
+                },
+                {
+                    "template": "«{{field_3}}» {{field_10}} 20{{field_13}}г.",
+                    "value": {
+                        "sys_id": null,
+                        "name": null,
+                        "title": "--Undefined--"
+                    }
+                }
+            ]
+        },
+        {
+            "value": {
+                "sys_id": null,
+                "name": null,
+                "title": "--Undefined--",
+                "related_list_name": "--Undefined--",
+                "related_list_sys_id": null
+            },
+            "tableOrderIndex": 1,
+            "columns": [
+                {
+                    "template": "От ПользователяДолжность{{field_4}} Ф.И.О.{{field_5}}/--------------/МП",
+                    "value": {
+                        "sys_id": null,
+                        "name": null,
+                        "title": "--Undefined--"
+                    }
+                },
+                {
+                    "template": "От АдминистратораДолжность{{field_6}} Ф.И.О.{{field_7}}/--------------/МП",
+                    "value": {
+                        "sys_id": null,
+                        "name": null,
+                        "title": "--Undefined--"
+                    }
+                }
+            ]
+        },
+        {
+            "value": {
+                "sys_id": "168537728105091400",
+                "name": "itam_asset",
+                "title": "Asset",
+                "related_list_name": "Assets to be Inventoried",
+                "related_list_sys_id": "169175248407979205"
+            },
+            "tableOrderIndex": 2,
+            "columns": [
+                {
+                    "template": "№ п/п",
+                    "value": {
+                        "sys_id": null,
+                        "name": "enumerated",
+                        "title": "Enumerated",
+                        "isEnumerationColumn": true
+                    }
+                },
+                {
+                    "template": "Наименование",
+                    "value": {
+                        "sys_id": "175982314416519640",
+                        "name": "currency_id",
+                        "title": "Currency"
+                    }
+                },
+                {
+                    "template": "Серийный номер",
+                    "value": {
+                        "sys_id": "174783449812719672",
+                        "name": "purchase_specification_item_id",
+                        "title": "Purchase specification item"
+                    }
+                },
+                {
+                    "template": "Цена, руб.",
+                    "value": {
+                        "sys_id": "174729229718088815",
+                        "name": "itam_purchase_request_id",
+                        "title": "Purchase request"
+                    }
+                },
+                {
+                    "template": "Кол-во,шт.",
+                    "value": {
+                        "sys_id": "173891419816449154",
+                        "name": "cost_center_id",
+                        "title": "Cost center"
+                    }
+                },
+                {
+                    "template": "Сумма, руб.",
+                    "value": {
+                        "sys_id": "169210836508508563",
+                        "name": "warranty_id",
+                        "title": "Warranty contract"
+                    }
+                }
+            ]
+        }
+    ]
+}

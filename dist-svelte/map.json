@@ -1,0 +1,1 @@
+{"version":3,"names":[],"sources":["(unknown)"],"sourcesContent":["<script>\r\n    console.log(\"Hello, world\");\r\n</script>\r\n\r\n<div>\r\n    Hello, from Svelte\r\n</div>\r\n\r\n\r\n"],"mappings":";;;;;;mDAAA,CAAC;CACG,OAAO,CAAC,GAAG,CAAC,cAAc;;;;;AAC/B,CAAC;;"}

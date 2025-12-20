@@ -16,18 +16,18 @@ const password = process.env.LOGIN_PASSWORD;
 const sys_id = process.env.WIDGET_ID;
 
 sendRequest({
-    // tableName: 'sys_widget',
+    tableName: 'sys_widget',
     id: sys_id,
 },
     {
         client_script: fs.readFileSync('./dist-webpack/bundle.js').toString(),
-        server_script: fs.readFileSync('./src/server.js').toString(),
-        css: fs.readFileSync('./src/css.css').toString(),
-        template: fs.readFileSync('./src/template.html').toString(),
+        server_script: fs.readFileSync('./src/svelte_constructor/server.js').toString(),
+        css: fs.readFileSync('./src/svelte_constructor/css.css').toString(),
+        template: fs.readFileSync('./src/svelte_constructor/template.html').toString(),
     }).then(() => sendRequest({
-        // tableName: 'sys_ui_action',
+        tableName: 'sys_ui_action',
         id: '176587443012697588',
-    }, { script: fs.readFileSync('./src/ui_action.js').toString(), },))
+    }, { script: fs.readFileSync('./src/template_generator/ui_action.js').toString(), },))
     .then(() => sendRequest({
         tableName: 'sys_widget',
         id: '176613180512408342'

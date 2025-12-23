@@ -66,14 +66,14 @@ export const selectTaskField = $state({
     fieldHook: null,
     optionsHook: null,
 
-    currentTaskType: null,
+    currentOption: null,
 
     reset: function () {
         this.isVisible = false;
         this.database_value = null;
         this.options = [];
         this.isOptionsOpened = false;
-        this.currentTaskType = null;
+        this.currentOption = null;
     },
 });
 
@@ -215,7 +215,7 @@ async function processFile(fileBlob, fileName) {
             table.relatedTables.unshift(emptyTableOption);
         }
         selectTaskField.options.push(emptyTableOption, ...tableTypes);
-        selectTaskField.currentTaskType = emptyTableOption;
+        selectTaskField.currentOption = emptyTableOption;
         const combined = withStrs.map((s, i) => ({
             template: s,
             originalValue: regexReplacer.replacedValues[i],
@@ -267,7 +267,7 @@ export function downloadPreprocessedFile() {
     link.download = "file.docx";
     link.href = docxUrl;
     link.click();
-    URL.revokeObjectURL(docxUrl);
+    // URL.revokeObjectURL(docxUrl);
 }
 
 export function uploadContainerDragOver(ev) {
@@ -309,7 +309,7 @@ export function onSelectTaskFieldClick() {
     }
 
     const { fieldHook, optionsHook } = selectTaskField;
-    optionsHook.style.width = fieldHook.offsetWidth + "px";
+    // optionsHook.style.width = fieldHook.offsetWidth + "px";
     optionsHook.style.minWidth = fieldHook.offsetWidth + "px";
     optionsHook.style.left = fieldHook.offsetLeft + "px";
     optionsHook.style.top =
@@ -326,7 +326,7 @@ export function onChooseColumnClick(optionField) {
 
     const { fieldHook, optionsHook } = optionField;
     optionField.isOptionsOpened = !optionField.isOptionsOpened;
-    optionsHook.style.width = fieldHook.offsetWidth + "px";
+    // optionsHook.style.width = fieldHook.offsetWidth + "px";
     optionsHook.style.minWidth = fieldHook.offsetWidth + "px";
     optionsHook.style.left = fieldHook.offsetLeft + "px";
     optionsHook.style.top =
@@ -349,7 +349,7 @@ export function onChooseRelatedTableColumn(relatedTable, table) {
 }
 
 export function onClickSelectTaskType(opt) {
-    if (opt !== selectTaskField.currentTaskType) {
+    if (opt !== selectTaskField.currentOption) {
         for (const { optionField } of templateToRealValue) {
             optionField.currentOption = emptyColumnOption;
         }
@@ -360,7 +360,7 @@ export function onClickSelectTaskType(opt) {
             }
         }
     }
-    selectTaskField.currentTaskType = opt;
+    selectTaskField.currentOption = opt;
     selectTaskField.isOptionsOpened = false;
 }
 
@@ -477,7 +477,7 @@ export async function generateTemplate() {
     console.log("generateTemplate");
     s_widget.setFieldValue(
         "selectTaskField",
-        getDbProps(selectTaskField.currentTaskType),
+        getDbProps(selectTaskField.currentOption),
     );
     s_widget.setFieldValue(
         "templateToRealValue",
@@ -535,9 +535,8 @@ function base64EncodeArrayBuffer(buffer) {
 
 export function onEnumerationOptionClick(column) {
     const { optionField } = column;
-    console.log(JSON.stringify(optionField));
-    if (optionField.currentOption.isEnumerationColumn) {
-        optionField.currentOption = optionField.previousOption;
+    if (optionField.currentOption?.isEnumerationColumn) {
+        optionField.currentOption = optionField.previousOption.isEnumerationColumn ? emptyColumnOption : optionField.previousOption;
     }
     else {
         optionField.previousOption = optionField.currentOption;

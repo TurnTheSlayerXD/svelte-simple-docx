@@ -18,6 +18,22 @@ if (input.action === 'init') {
     return;
 }
 
+if (input.action === 'fetchTableColumns') {
+    const { tableNameOfCurrentTask, idOfCurrentTask, requiredColumns } = input;
+    const taskSr = new SimpleRecord(tableNameOfCurrentTask);
+    taskSr.addQuery('sys_id', idOfCurrentTask);
+    // taskSr.selectAttributes(requiredColumns);
+    taskSr.setLimit(1);
+    taskSr.query();
+    const returnObject = {};
+    while (taskSr.next()) {
+        for (const column of requiredColumns) {
+            returnObject[column] = taskSr.getDisplayValue(column);
+        }
+    }
+    data.returnObject = returnObject;
+}
+
 if (input.action === 'fetchTableData') {
     const { tableColumnDescription, idOfCurrentTask, tableNameOfCurrentTask } = input;
     const relatedListElementSr = new SimpleRecord('sys_ui_related_list_element');

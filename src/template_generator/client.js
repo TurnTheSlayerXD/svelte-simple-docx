@@ -65,12 +65,19 @@ async function doGenerationAlgorithm() {
 
     eval(docxScriptText);
 
+
     const patches = {};
+    s_widget.setFieldValue('tableNameOfCurrentTask', s_form.getTableName());
+    s_widget.setFieldValue('idOfCurrentTask', s_form.getUniqueValue());
+    s_widget.setFieldValue('requiredColumns', templateRecord.templateToRealValue.map(dt => dt.value.name));
+    await serverUpdate('fetchTableColumns');
+    const returnObject = s_widget.getFieldValue('returnObject');
     for (const { template, originalValue, value: dbValue } of templateRecord.templateToRealValue) {
         let textToPush;
         if (dbValue.sys_id) {
-            const displayValue = s_form.getDisplayValue(dbValue.name);
-            textToPush = displayValue ? displayValue : dbValue.title;
+            const displayValue = returnObject[dbValue.name];
+            // !!displayValue || throwError(returnObject);
+            textToPush = !!displayValue ? displayValue : originalValue;
         } else {
             textToPush = originalValue;
         }
@@ -95,8 +102,6 @@ async function doGenerationAlgorithm() {
         }));
 
     console.log(tableColumnDescription);
-    s_widget.setFieldValue('tableNameOfCurrentTask', s_form.getTableName());
-    s_widget.setFieldValue('idOfCurrentTask', s_form.getUniqueValue());
     s_widget.setFieldValue('tableColumnDescription', tableColumnDescription);
     await serverUpdate('fetchTableData');
 
@@ -124,9 +129,12 @@ async function doGenerationAlgorithm() {
                 }
                 ++enumerationIndex;
                 for (const [key, value] of Object.entries(row)) {
-                    const indexOfColumn = dt.columns.findIndex(c => c.value.name === key);
-                    (0 <= indexOfColumn && indexOfColumn < rowOfAlgo.length) || throwError('index out of range');
-                    rowOfAlgo[indexOfColumn] = value;
+                    for (let indexOfColumn = 0; indexOfColumn < dt.columns.length; ++indexOfColumn) {
+                        if (dt.columns[indexOfColumn].value.name === key) {
+                            (0 <= indexOfColumn && indexOfColumn < rowOfAlgo.length) || throwError('index out of range');
+                            rowOfAlgo[indexOfColumn] = value;
+                        }
+                    }
                 }
                 rowsOfAlgo.push(rowOfAlgo);
             }

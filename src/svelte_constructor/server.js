@@ -23,10 +23,11 @@ if (input.action === 'createAttachmentAndReturnUrl') {
 }
 else if (input.action === 'fetchItamTaskTypes') {
     const tableSr = new SimpleRecord('sys_db_table');
-    tableSr.addQuery('parent_id.name', 'itam_tasks');
+    tableSr.addEncodedQuery('parent_id.name=itam_tasks^ORnameINitam_tasks@task');
     tableSr.selectAttributes(['title', 'name']);
     tableSr.query();
     data.tableTypes = [];
+
     while (tableSr.next()) {
         data.tableTypes.push({
             sys_id: tableSr.sys_id,
@@ -34,8 +35,10 @@ else if (input.action === 'fetchItamTaskTypes') {
             title: tableSr.title,
             columns: [],
             relatedTables: [],
-        })
+        });
     }
+
+
 
     const relatedListArr = [];
     const relatedListSr = new SimpleRecord('sys_ui_related_list');
@@ -91,9 +94,14 @@ else if (input.action === 'fetchItamTaskTypes') {
     columnSr.selectAttributes(['column_name', 'title', 'table_id']);
     columnSr.query();
     while (columnSr.next()) {
-        const table = data.tableTypes.find(({ sys_id }) => sys_id === columnSr.getValue('table_id'));
         const columnRecord = { sys_id: columnSr.sys_id, title: columnSr.title, name: columnSr.column_name };
-        if (table) {
+        const table = data.tableTypes.find(({ sys_id }) => sys_id === columnSr.getValue('table_id'));
+        if (table?.name === 'task') {
+            for (const tableIter of data.tableTypes) {
+                tableIter.columns.push(columnRecord);
+            }
+        }
+        else if (table) {
             table.columns.push(columnRecord);
         }
         const relatedTables = relatedTablesArr.filter(({ sys_id }) => sys_id === columnSr.getValue('table_id'));

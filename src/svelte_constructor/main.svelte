@@ -1,4 +1,6 @@
 <script>
+    import Checkbox from "./checkbox.svelte";
+    import Dropdown from "./dropdown.svelte";
     import {
         filezoneDrop,
         uploadContainerDragOver,
@@ -20,6 +22,9 @@
         onChooseRelatedTableColumn,
         generateTemplate,
         onEnumerationOptionClick,
+        trackedSelectButtons,
+        emptyColumnOption,
+        emptyTableOption,
     } from "./script.svelte.js";
 </script>
 
@@ -209,94 +214,27 @@
 </div>
 
 {#if selectTaskField.isVisible}
-    <div
-        style="flex: 1 1 auto; margin-top: 50px; max-width: 200px;"
-        bind:this={selectTaskField.fieldHook}
-    >
-        <div
-            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
-            data-test="field-Статус"
-        >
-            <div
-                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
-            >
-                <div
-                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
-                >
-                    <div
-                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
-                        data-test="state-label"
-                    >
-                        <span
-                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-                            ><span>Task type</span></span
-                        >
-                    </div>
-                </div>
-            </div>
-            <div
-                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Input___bLmkj"
-                dropdown="true"
-            >
-                <div
-                    class="src-components-dynamicForms-view-field-select-___styles-module__Input___GDQ_t"
-                >
-                    <div
-                        class="src-components-customselect-___styles-module__container___rnMJM"
-                    >
-                        <button
-                            type="button"
-                            class="src-components-customselect-___styles-module__input___M2cpK"
-                            tabindex="13"
-                            onclick={() => onSelectTaskFieldClick()}
-                            ><span
-                                class="src-components-customselect-___styles-module__inputText___J9u6h"
-                                >{selectTaskField.currentTaskType?.title}</span
-                            ><span
-                                class="src-components-customselect-___styles-module__inputChevron___eSi_J"
-                                ><svg
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        clip-rule="evenodd"
-                                        d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                                        fill="#2E3238"
-                                    ></path>
-                                </svg>
-                            </span></button
-                        >
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div
-        class="src-components-dropdown-___styles-module__Dropdown___y_t3K"
-        style="position: absolute;"
-        dropdown="true"
-        style:display={selectTaskField.isOptionsOpened ? "initial" : "none"}
-        bind:this={selectTaskField.optionsHook}
-    >
-        {#each selectTaskField.options as opt}
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div
-                class="src-components-customselect-___styles-module__menu___XQSV5"
-                onclick={() => onClickSelectTaskType(opt)}
-            >
-                <div
-                    class="src-components-customselect-___styles-module__menuItem___UqKfM src-components-customselect-___styles-module__active___z7m5V"
-                >
-                    {opt.title}
-                </div>
-            </div>
-        {/each}
-    </div>
+    <Dropdown
+        fieldTitle="ITAM Task type"
+        optionSource={selectTaskField.options}
+        optionField={selectTaskField}
+        trackedButtons={trackedSelectButtons}
+        onBeforeOptionSelectCallback={(unused, opt) => {
+            if (opt !== selectTaskField.currentOption) {
+                for (const { optionField } of templateToRealValue) {
+                    optionField.currentOption = emptyColumnOption;
+                }
+                for (const relatedTable of svelteDetectedTables) {
+                    relatedTable.optionField.currentOption = emptyTableOption;
+                    for (const {
+                        optionField,
+                    } of relatedTable.templateColumns) {
+                        optionField.currentOption = emptyColumnOption;
+                    }
+                }
+            }
+        }}
+    ></Dropdown>
 {/if}
 
 <div style="margin-top: 50px;">
@@ -332,101 +270,23 @@
                 </div>
             </div>
         </div>
-        <div style="flex: 1 1 auto; max-width: 200px;">
-            <div
-                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
-                bind:this={table.optionField.fieldHook}
-            >
-                <div
-                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
-                >
-                    <div
-                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
-                    >
-                        <div
-                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
-                        >
-                            <span
-                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-                                ><span>Related table</span></span
-                            >
-                        </div>
-                    </div>
-                </div>
-                <div
-                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Input___bLmkj"
-                    dropdown="true"
-                >
-                    <div
-                        class="src-components-dynamicForms-view-field-select-___styles-module__Input___GDQ_t"
-                    >
-                        <div
-                            class="src-components-customselect-___styles-module__container___rnMJM"
-                        >
-                            <button
-                                type="button"
-                                class="src-components-customselect-___styles-module__input___M2cpK"
-                                tabindex="13"
-                                onclick={() =>
-                                    onChooseRelatedTableClick(
-                                        table.optionField,
-                                    )}
-                                ><span
-                                    class="src-components-customselect-___styles-module__inputText___J9u6h"
-                                >
-                                    {table.optionField.currentOption.related_list_name}
-                                </span><span
-                                    class="src-components-customselect-___styles-module__inputChevron___eSi_J"
-                                    ><svg
-                                        width="24"
-                                        height="24"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                    >
-                                        <path
-                                            fill-rule="evenodd"
-                                            clip-rule="evenodd"
-                                            d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                                            fill="#2E3238"
-                                        ></path>
-                                    </svg>
-                                </span></button
-                            >
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div
-            class="src-components-dropdown-___styles-module__Dropdown___y_t3K"
-            style="position: absolute;"
-            dropdown="true"
-            style:display={table.optionField.isOptionsOpened
-                ? "initial"
-                : "none"}
-            bind:this={table.optionField.optionsHook}
-        >
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            {#if selectTaskField.currentTaskType?.relatedTables}
-                {#each selectTaskField.currentTaskType.relatedTables as relatedTable}
-                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                    <div
-                        class="src-components-customselect-___styles-module__menu___XQSV5"
-                        onclick={() =>
-                            onChooseRelatedTableColumn(relatedTable, table)}
-                    >
-                        <div
-                            class="src-components-customselect-___styles-module__menuItem___UqKfM src-components-customselect-___styles-module__active___z7m5V"
-                        >
-                            {relatedTable.related_list_name}
-                        </div>
-                    </div>
-                {/each}
-            {/if}
-        </div>
+
+        <Dropdown
+            fieldTitle="Related table"
+            optionField={table.optionField}
+            getFieldTitleCallback={(currentOption) =>
+                currentOption.related_list_name}
+            getOptionTitleCallback={(option) => option.related_list_name}
+            trackedButtons={trackedSelectButtons}
+            optionSource={selectTaskField.currentOption.relatedTables}
+            onBeforeOptionSelectCallback={(optionField, column) => {
+                if (optionField.currentOption !== column) {
+                    for (const col of table.templateColumns) {
+                        col.optionField.currentOption = emptyColumnOption;
+                    }
+                }
+            }}
+        ></Dropdown>
 
         <div style="margin-left: 100px;">
             {#if table.optionField.currentOption.sys_id}
@@ -505,173 +365,23 @@
                                 </div>
                             </div>
                         </div>
-                        <div
-                            style="flex: 1 1 auto; max-width: 200px;"
-                            style:visibility={column.optionField.currentOption
-                                .isEnumerationColumn
-                                ? "hidden"
-                                : "visible"}
-                        >
-                            <div
-                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
-                                bind:this={column.optionField.fieldHook}
-                            >
-                                <div
-                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
-                                >
-                                    <div
-                                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
-                                    >
-                                        <div
-                                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
-                                        >
-                                            <span
-                                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-                                                ><span
-                                                    >Column of related table</span
-                                                ></span
-                                            >
-                                        </div>
-                                    </div>
-                                </div>
-                                <div
-                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Input___bLmkj"
-                                    dropdown="true"
-                                >
-                                    <div
-                                        class="src-components-dynamicForms-view-field-select-___styles-module__Input___GDQ_t"
-                                    >
-                                        <div
-                                            class="src-components-customselect-___styles-module__container___rnMJM"
-                                        >
-                                            <button
-                                                type="button"
-                                                class="src-components-customselect-___styles-module__input___M2cpK"
-                                                tabindex="13"
-                                                onclick={() =>
-                                                    onChooseColumnClick(
-                                                        column.optionField,
-                                                    )}
-                                                ><span
-                                                    class="src-components-customselect-___styles-module__inputText___J9u6h"
-                                                >
-                                                    {column.optionField
-                                                        .currentOption.title}
-                                                </span><span
-                                                    class="src-components-customselect-___styles-module__inputChevron___eSi_J"
-                                                    ><svg
-                                                        width="24"
-                                                        height="24"
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                    >
-                                                        <path
-                                                            fill-rule="evenodd"
-                                                            clip-rule="evenodd"
-                                                            d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                                                            fill="#2E3238"
-                                                        ></path>
-                                                    </svg>
-                                                </span></button
-                                            >
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div
-                            class="src-components-dropdown-___styles-module__Dropdown___y_t3K"
-                            style="position: absolute;"
-                            dropdown="true"
-                            style:display={column.optionField.isOptionsOpened
-                                ? "initial"
-                                : "none"}
-                            bind:this={column.optionField.optionsHook}
-                        >
-                            {#if table.optionField.currentOption.columns}
-                                {#each table.optionField.currentOption.columns as relatedColumn}
-                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                                    <div
-                                        class="src-components-customselect-___styles-module__menu___XQSV5"
-                                        onclick={() => {
-                                            column.optionField.currentOption =
-                                                relatedColumn;
-                                            column.optionField.isOptionsOpened = false;
-                                        }}
-                                    >
-                                        <div
-                                            class="src-components-customselect-___styles-module__menuItem___UqKfM src-components-customselect-___styles-module__active___z7m5V"
-                                        >
-                                            {relatedColumn.title}
-                                        </div>
-                                    </div>
-                                {/each}
-                            {/if}
-                        </div>
-                        <div style="flex: 1 1 auto; margin-top: 25px;">
-                            <div
-                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L src-components-dynamicForms-view-fieldWrapper-___styles-module__Checkbox___tUbWm"
-                                data-test="field-Use as replacement"
-                            >
-                                <div
-                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
-                                >
-                                    <div
-                                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
-                                    >
-                                        <div
-                                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
-                                            data-test="is_replacement_reserve-label"
-                                        >
-                                            <span
-                                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-                                                ><span>Enumeration column</span
-                                                ></span
-                                            >
-                                        </div>
-                                    </div>
-                                </div>
-                                <div
-                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Input___bLmkj"
-                                >
-                                    <div
-                                        class="src-components-dynamicForms-view-field-checkbox-___styles-module__Checkbox___sskDi"
-                                    >
-                                        <label class=""
-                                            ><input
-                                                type="checkbox"
-                                                data-test="is_replacement_reserve-field-checkbox-checkbox"
-                                                value="0"
-                                                onclick={() => {
-                                                    onEnumerationOptionClick(
-                                                        column,
-                                                    );
-                                                }}
-                                            /><span
-                                                class="src-components-dynamicForms-view-field-checkbox-___styles-module__icon___KprDA"
-                                                ><span
-                                                    class="src-components-dynamicForms-view-field-checkbox-___styles-module__Check___kKbMW"
-                                                    ><svg
-                                                        width="8"
-                                                        height="6"
-                                                        viewBox="0 0 8 6"
-                                                        fill="none"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                    >
-                                                        <path
-                                                            d="M7.79092 1.20502C8.06969 0.929352 8.06969 0.482413 7.79092 0.206748C7.51215 -0.068916 7.06018 -0.068916 6.78141 0.206748L2.85533 4.29585L1.21859 2.67734C0.939819 2.40167 0.487846 2.40167 0.209077 2.67734C-0.0696923 2.953 -0.0696923 3.39994 0.209077 3.67561L2.35057 5.79325C2.62934 6.06892 3.08132 6.06892 3.36009 5.79325L7.79092 1.20502Z"
-                                                            fill="white"
-                                                        ></path>
-                                                    </svg>
-                                                </span></span
-                                            ></label
-                                        >
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
+                        {#if !column.optionField.currentOption.isEnumerationColumn}
+                            <Dropdown
+                                optionField={column.optionField}
+                                optionSource={table.optionField.currentOption
+                                    .columns}
+                                trackedButtons={trackedSelectButtons}
+                                fieldTitle="Related list column"
+                            ></Dropdown>
+                        {/if}
+
+                        <Checkbox
+                            title="Enumeration column"
+                            onClickCheckbox={() =>
+                                onEnumerationOptionClick(column)}
+                        ></Checkbox>
+                        
                     </div>
                 {/each}
             {/if}
@@ -819,104 +529,27 @@
                 </div>
             </div>
 
-            <div style="flex: 1 1 auto; max-width: 200px;">
-                <div
-                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
-                    bind:this={pair.optionField.fieldHook}
-                >
-                    <div
-                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
-                    >
-                        <div
-                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
-                        >
-                            <div
-                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
-                            >
-                                <span
-                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-                                    ><span>Column to map</span></span
-                                >
-                            </div>
-                        </div>
-                    </div>
-                    <div
-                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Input___bLmkj"
-                        dropdown="true"
-                    >
-                        <div
-                            class="src-components-dynamicForms-view-field-select-___styles-module__Input___GDQ_t"
-                        >
-                            <div
-                                class="src-components-customselect-___styles-module__container___rnMJM"
-                            >
-                                <button
-                                    type="button"
-                                    class="src-components-customselect-___styles-module__input___M2cpK"
-                                    tabindex="13"
-                                    onclick={() =>
-                                        onChooseColumnClick(pair.optionField)}
-                                    ><span
-                                        class="src-components-customselect-___styles-module__inputText___J9u6h"
-                                    >
-                                        {pair.optionField.currentOption.title}
-                                    </span><span
-                                        class="src-components-customselect-___styles-module__inputChevron___eSi_J"
-                                        ><svg
-                                            width="24"
-                                            height="24"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                        >
-                                            <path
-                                                fill-rule="evenodd"
-                                                clip-rule="evenodd"
-                                                d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                                                fill="#2E3238"
-                                            ></path>
-                                        </svg>
-                                    </span></button
-                                >
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div
-                class="src-components-dropdown-___styles-module__Dropdown___y_t3K"
-                style="position: absolute; min-width: unset !important;"
-                dropdown="true"
-                style:display={pair.optionField.isOptionsOpened
-                    ? "initial"
-                    : "none"}
-                bind:this={pair.optionField.optionsHook}
-            >
-                {#if selectTaskField.currentTaskType?.columns}
-                    {#each selectTaskField.currentTaskType.columns as column}
-                        <!-- svelte-ignore a11y_click_events_have_key_events -->
-                        <!-- svelte-ignore a11y_no_static_element_interactions -->
-                        <div
-                            class="src-components-customselect-___styles-module__menu___XQSV5"
-                            onclick={() => {
-                                pair.optionField.currentOption = column;
-                                pair.optionField.isOptionsOpened = false;
-                            }}
-                        >
-                            <div
-                                class="src-components-customselect-___styles-module__menuItem___UqKfM src-components-customselect-___styles-module__active___z7m5V"
-                            >
-                                {column.title}
-                            </div>
-                        </div>
-                    {/each}
-                {/if}
-            </div>
+            <Dropdown
+                optionField={pair.optionField}
+                optionSource={selectTaskField.currentOption.columns}
+                fieldTitle="Task column to map"
+                trackedButtons={trackedSelectButtons}
+            ></Dropdown>
         </div>
     {/each}
 </div>
 
 <style>
+    .for-overflow-dropdown {
+        max-height: 500px;
+        overflow-y: scroll;
+        position: absolute;
+    }
+
+    .src-components-customselect-___styles-module__menu___XQSV5:hover {
+        background-color: #f2f2f2;
+    }
+
     .black-bar {
         background-color: #000000; /* Use the hex code for black */
         height: 1px; /* Set a specific height */

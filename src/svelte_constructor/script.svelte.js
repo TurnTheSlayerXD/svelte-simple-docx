@@ -67,7 +67,6 @@ export const containerState = $state({ isDragging: false });
 
 export const selectTaskField = $state({
     isVisible: false,
-    database_value: null,
     options: [],
     isOptionsOpened: false,
     fieldHook: null,
@@ -77,16 +76,22 @@ export const selectTaskField = $state({
 
     reset: function () {
         this.isVisible = false;
-        this.database_value = null;
         this.options = [];
         this.isOptionsOpened = false;
         this.currentOption = null;
     },
 });
 
+export const configBeingModified = $state({
+    currentOption: null,
+    isOptionsOpened: false,
+    fieldHook: null,
+    optionsHook: null,
+});
+
 addSelfToTrackedButtons(selectTaskField);
 
-function resetState() {
+function resetWidgetState() {
     selectTaskField.reset();
     while (svelteDetectedTables.length > 0) {
         svelteDetectedTables.pop();
@@ -94,6 +99,8 @@ function resetState() {
     while (templateToRealValue.length > 0) {
         templateToRealValue.pop();
     }
+    clearArray(templateToRealValue);
+    clearArray(svelteDetectedTables);
 }
 
 
@@ -157,7 +164,7 @@ export async function serverUpdate(action) {
 
 export function removeFile(file) {
     if (file) {
-        resetState();
+        resetWidgetState();
         buttonsState.isUploadPreproccessedDisabled = true;
         return uploadedFiles.splice(uploadedFiles.indexOf(file));
     }
@@ -206,15 +213,14 @@ async function processFile(fileBlob, fileName) {
         docxUrl = URL.createObjectURL(outputBlob);
 
         buttonsState.isUploadPreproccessedDisabled = false;
-        selectTaskField.isVisible = true;
 
         await serverUpdate("fetchItamTaskTypes");
-        const tableTypes = JSON.parse(
-            JSON.stringify(s_widget.getFieldValue("tableTypes")),
-        );
+
+        selectTaskField.isVisible = true;
+
+        const tableTypes = JSON.parse(s_widget.getFieldValue("tableTypes"));
         s_widget.setFieldValue("tableTypes", '');
 
-        console.log(tableTypes);
         for (const table of tableTypes) {
             table.columns.unshift(emptyColumnOption);
             table.scripts.forEach(s => s.isScripted = true);
@@ -264,6 +270,7 @@ async function processFile(fileBlob, fileName) {
                 })),
             })),
         );
+
         for (const tableBtn of svelteDetectedTables) {
             addSelfToTrackedButtons(tableBtn.optionField);
             for (const colBtn of tableBtn.templateColumns) {
@@ -514,26 +521,19 @@ export async function generateTemplate() {
         })),
     );
 
-    console.log(docxFiles.templateDocx);
-    s_widget.setFieldValue(
-        "docxBase64",
-        base64EncodeArrayBuffer(await docxFiles.templateDocx.arrayBuffer()),
-    );
-    console.log(
-        "selectTaskField",
-        mobx(s_widget.getFieldValue("selectTaskField")),
-    );
-    console.log(
-        "templateToRealValue",
-        mobx(s_widget.getFieldValue("templateToRealValue")),
-    );
-    console.log("detectedTables", mobx(s_widget.getFieldValue("detectedTables")));
-    console.log(
-        "docxArrayBuffer",
-        s_widget.getFieldValue("docxArrayBuffer"),
-    );
-    await serverUpdate("createDocxTemplate");
-    buttonsState.isUploadPreproccessedDisabled = false;
+    // if there is config selected - update existing
+    if (configBeingModified.currentOption?.sys_id) {
+        s_widget.setFieldValue('docxTemplateSysId', configBeingModified.currentOption.sys_id);
+        await serverUpdate('updateExistingDocxTemplateRecord');
+    }
+    else {
+        s_widget.setFieldValue(
+            "docxBase64",
+            base64EncodeArrayBuffer(await docxFiles.templateDocx.arrayBuffer()),
+        );
+        await serverUpdate("createDocxTemplate");
+        buttonsState.isUploadPreproccessedDisabled = false;
+    }
 }
 
 function base64EncodeArrayBuffer(buffer) {
@@ -549,7 +549,8 @@ function base64EncodeArrayBuffer(buffer) {
 export function onEnumerationOptionClick(column) {
     const { optionField } = column;
     if (optionField.currentOption?.isEnumerationColumn) {
-        optionField.currentOption = optionField.previousOption.isEnumerationColumn ? emptyColumnOption : optionField.previousOption;
+        optionField.currentOption = (!optionField.previousOption || optionField.previousOption?.isScripted || optionField.previousOption?.isEnumerationColumn)
+            ? emptyColumnOption : optionField.previousOption;
     }
     else {
         optionField.previousOption = optionField.currentOption;
@@ -563,10 +564,112 @@ export function onSciptedOptionClick(column) {
     const { optionField } = column;
 
     if (optionField.currentOption?.isScripted) {
-        optionField.currentOption = (optionField.previousOption?.isScripted || optionField.previousOption?.isEnumerationColumn) ? emptyColumnOption : optionField.previousOption;
+        optionField.currentOption = (!optionField.previousOption || optionField.previousOption?.isScripted || optionField.previousOption?.isEnumerationColumn)
+            ? emptyColumnOption : optionField.previousOption;
     }
     else {
         optionField.previousOption = optionField.currentOption;
         optionField.currentOption = emptyScriptedColumnOption;
     }
+}
+
+export async function getExistingDocxTemplateRecords() {
+    await serverUpdate('getExistingDocxTemplateRecords');
+    const result = JSON.parse(s_widget.getFieldValue('docxTemplateRecords'));
+    s_widget.setFieldValue(s_widget.getFieldValue('docxTemplateRecords'), '');
+    result.unshift({ sys_id: null, name: "--Undefined--", title: "--Undefined--" });
+    return result;
+}
+
+function clearArray(arr) {
+    while (arr.length > 0) {
+        arr.pop();
+    }
+}
+
+
+export async function onSelectExistingDocxTemplateClick(optionField, column) {
+    if (!column.sys_id) {
+        resetWidgetState();
+        return;
+    }
+
+    if (column.sys_id === configBeingModified.currentOption?.sys_id) {
+        console.log('ignore');
+        return;
+    }
+
+
+    s_widget.setFieldValue('docxTemplateSysId', column.sys_id);
+    await serverUpdate('getExistingDocxTemplateConfigById');
+    const currentConfig = JSON.parse(s_widget.getFieldValue('docxTemplateRecord'));
+    s_widget.setFieldValue('docxTemplateRecord', '');
+
+    await serverUpdate("fetchItamTaskTypes");
+    const tableTypes = JSON.parse(s_widget.getFieldValue("tableTypes"));
+    s_widget.setFieldValue("tableTypes", '');
+
+
+    selectTaskField.isVisible = true;
+
+
+    for (const table of tableTypes) {
+        table.columns.unshift(emptyColumnOption);
+        table.scripts.forEach(s => s.isScripted = true);
+        table.scripts.unshift(emptyScriptedColumnOption);
+
+        for (const relatedTable of table.relatedTables) {
+            relatedTable.columns.unshift(emptyColumnOption);
+            relatedTable.scripts.forEach(s => s.isScripted = true);
+            relatedTable.scripts.unshift(emptyScriptedColumnOption);
+        }
+
+        table.relatedTables.unshift(emptyTableOption);
+    }
+
+    clearArray(selectTaskField.options);
+    selectTaskField.options.push(emptyTableOption, ...tableTypes);
+
+    // looking for current optionSelected
+    selectTaskField.currentOption = tableTypes.find(tt => tt.sys_id === currentConfig.table_id);
+
+    //mapping task table columns
+    const { template_data: templateData } = currentConfig;
+    const newTemplateToRealValue = templateData.templateToRealValue.map(cnf => ({
+        template: cnf.template,
+        originalValue: cnf.originalValue,
+        optionField: {
+            isOptionsOpened: false,
+            currentOption: cnf.value,
+            fieldHook: null,
+            optionsHook: null,
+        },
+    }));
+    clearArray(templateToRealValue);
+    templateToRealValue.push(...newTemplateToRealValue);
+
+    // mapping related lists and their columns
+    const newSvelteDetectedTables = templateData.detectedTables
+        .map(cnf => ({
+
+            tableOrderIndex: cnf.tableOrderIndex,
+            templateName: cnf.columns.map(col => col.template).join(" | "),
+            optionField: {
+                isOptionsOpened: false,
+                // special because we need references to tableTypes
+                currentOption: tableTypes
+                    .find(table => table.sys_id === currentConfig.table_id)
+                    ?.relatedTables
+                    ?.find(relatedTable => relatedTable.sys_id === cnf.value.sys_id) || throwError('UNREACHABLE'),
+            },
+            templateColumns: cnf.columns.map((col) => ({
+                template: col.template,
+                optionField: {
+                    isOptionsOpened: false,
+                    currentOption: col.value,
+                }
+            })),
+        }));
+    clearArray(svelteDetectedTables);
+    svelteDetectedTables.push(...newSvelteDetectedTables);
 }

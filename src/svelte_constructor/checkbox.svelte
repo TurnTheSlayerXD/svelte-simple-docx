@@ -1,5 +1,5 @@
 <script>
-    const { title, onClickCheckbox } = $props();
+    const { title, onClickCheckbox, checked } = $props();
 </script>
 
 <div style="flex: 1 1 auto; margin-top: 25px;">
@@ -34,7 +34,7 @@
                     ><input
                         type="checkbox"
                         data-test="is_replacement_reserve-field-checkbox-checkbox"
-                        value="0"
+                        {checked}
                         onclick={() => onClickCheckbox()}
                     /><span
                         class="src-components-dynamicForms-view-field-checkbox-___styles-module__icon___KprDA"

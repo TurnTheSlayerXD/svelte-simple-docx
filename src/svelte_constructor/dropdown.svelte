@@ -1,35 +1,43 @@
 <script>
-    let {
+    const {
         optionField,
         optionSource,
         trackedButtons,
         fieldTitle,
         getFieldTitleCallback,
         getOptionTitleCallback,
-
         onBeforeOptionSelectCallback,
     } = $props();
     (() => {
         trackedButtons.push(optionField);
     })();
 
-    function onChooseColumnClick(optionField) {
+    let __optionSource = $derived(optionSource);
+
+    const fixOffsetForPopup = (optionField) => {
         for (const btn of trackedButtons.filter((btn) => btn !== optionField)) {
             btn.isOptionsOpened = false;
         }
-
-        // console.log('optionSource', optionSource);
-        // optionField.isOptionsOpened = true;
-
-        const { fieldHook, optionsHook } = optionField;
         optionField.isOptionsOpened = !optionField.isOptionsOpened;
-        // optionsHook.style.width = fieldHook.offsetWidth + "px";
-
+        const { fieldHook, optionsHook } = optionField;
         optionsHook.style.minWidth = fieldHook.offsetWidth + "px";
         optionsHook.style.left = fieldHook.offsetLeft + "px";
         optionsHook.style.top =
             fieldHook.offsetTop + fieldHook.offsetHeight + "px";
-    }
+    };
+
+    let onChooseColumnClick;
+    (() => {
+        onChooseColumnClick =
+            __optionSource instanceof Function
+                ? async (optionField) => {
+                      __optionSource = await optionSource();
+                      fixOffsetForPopup(optionField);
+                  }
+                : () => {
+                      fixOffsetForPopup(optionField);
+                  };
+    })();
 
     function onSelectNewValue(optionField, column) {
         if (onBeforeOptionSelectCallback) {
@@ -119,13 +127,11 @@
     style:display={optionField.isOptionsOpened ? "initial" : "none"}
     bind:this={optionField.optionsHook}
 >
-    {#if optionSource}
-        {#each optionSource as column}
+    {#if __optionSource}
+        {#each __optionSource as column}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
-            {#if (() => {
-                return optionField.currentOption === column;
-            })()}
+            {#if optionField.currentOption === column}
                 <div
                     class="src-components-customselect-___styles-module__menu___XQSV5"
                     style:background-color="#e7f0fe"
@@ -163,4 +169,3 @@
         background-color: #f2f2f2;
     }
 </style>
-

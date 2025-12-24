@@ -16,20 +16,92 @@ if (input.action === 'createAttachmentAndReturnUrl') {
     const base64 = attachmentService.base64Encode(binary);
     const attachmentId = attachmentService.writeBase64(docId, docxFileName, base64, mimeType);
     data.attachmentUrl = attachmentService.getAttachmentUrlById(attachmentId);
-} else if (input.action === 'fetchDocxScript') {
+}
+
+else if (input.action === 'fetchDocxScript') {
     const sr = new SimpleRecord('sys_script');
     sr.get('176538018815432077');
     data.docxLibraryScript = sr.script;
 }
+
 else if (input.action === 'fetchItamTaskTypes') {
+    data.tableTypes = JSON.stringify(fetchItamTaskTypes());
+}
+
+else if (input.action === "createDocxTemplate") {
+    const { docxBase64, selectTaskField, templateToRealValue, detectedTables } = input;
+    if (!selectTaskField.sys_id) {
+        return;
+    }
+
+    const resultJSON = JSON.stringify({ selectTaskField, templateToRealValue, detectedTables });
+
+    const docxTemplateSr = new SimpleRecord('itam_task_docx_template');
+    docxTemplateSr.setValue('task_table_id', selectTaskField.sys_id);
+    docxTemplateSr.setValue('template_data', resultJSON);
+    const docxTemplateSysId = docxTemplateSr.insert();
+    if (!docxTemplateSysId) {
+        ss.addErrorMessage('Failed to save template');
+        return;
+    }
+    const docId = ss.getDocIdByIds('176580796911236520', docxTemplateSysId);
+    const attachmentService = new SimpleAttachment();
+    const attachmentId = attachmentService.writeBase64(docId, 'template.docx', docxBase64, '.docx');
+    if (!attachmentId) {
+        ss.addErrorMessage('Failed to save base64 template');
+        return;
+    }
+    ss.addSuccessMessage(`Succesfully saved template! into <a href="/record/itam_task_docx_template/${docxTemplateSysId}">Ref to template</a>`);
+}
+
+else if (input.action === 'getExistingDocxTemplateConfigById') {
+    const { docxTemplateSysId } = input;
+    const docxTemplateSr = new SimpleRecord('itam_task_docx_template');
+    docxTemplateSr.get(docxTemplateSysId);
+    data.docxTemplateRecord = JSON.stringify({ sys_id: docxTemplateSr.sys_id, table_id: docxTemplateSr.getValue('task_table_id'), template_data: JSON.parse(docxTemplateSr.template_data) });
+}
+
+else if (input.action === 'getExistingDocxTemplateRecords') {
+    const docxTemplateSr = new SimpleRecord('itam_task_docx_template');
+    docxTemplateSr.selectAttributes(['sys_id', 'name']);
+    docxTemplateSr.query();
+    const docxTemplateRecords = [];
+    while (docxTemplateSr.next()) {
+        docxTemplateRecords.push({ sys_id: docxTemplateSr.sys_id, name: docxTemplateSr.name, title: docxTemplateSr.name });
+    }
+    data.docxTemplateRecords = JSON.stringify(docxTemplateRecords);
+}
+
+else if (input.action === 'updateExistingDocxTemplateRecord') {
+    const { docxTemplateSysId, selectTaskField, templateToRealValue, detectedTables } = input;
+    if (!selectTaskField.sys_id) {
+        return;
+    }
+    const resultJSON = JSON.stringify({ selectTaskField, templateToRealValue, detectedTables });
+    const docxTemplateSr = new SimpleRecord('itam_task_docx_template');
+    docxTemplateSr.get(docxTemplateSysId);
+    docxTemplateSr.setValue('task_table_id', selectTaskField.sys_id);
+    docxTemplateSr.setValue('template_data', resultJSON);
+    let resultOfUpdate = docxTemplateSr.update();
+    if (!resultOfUpdate) {
+        ss.addErrorMessage(`Failed to updated template <a href="/record/itam_task_docx_template/${docxTemplateSysId}">Ref to template</a>`);
+        return;
+    }
+    ss.addSuccessMessage(`Succesfully updated template! into <a href="/record/itam_task_docx_template/${docxTemplateSysId}">Ref to template</a>`);
+}
+
+
+
+function fetchItamTaskTypes() {
+
     const tableSr = new SimpleRecord('sys_db_table');
     tableSr.addEncodedQuery('parent_id.name=itam_tasks^ORnameINitam_tasks@task');
     tableSr.selectAttributes(['title', 'name']);
     tableSr.query();
-    data.tableTypes = [];
+    const tableTypes = [];
 
     while (tableSr.next()) {
-        data.tableTypes.push({
+        tableTypes.push({
             sys_id: tableSr.sys_id,
             name: tableSr.name,
             title: tableSr.title,
@@ -41,7 +113,7 @@ else if (input.action === 'fetchItamTaskTypes') {
 
     const relatedListArr = [];
     const relatedListSr = new SimpleRecord('sys_ui_related_list');
-    relatedListSr.addQuery('table_id', 'in', data.tableTypes.map(({ sys_id }) => sys_id));
+    relatedListSr.addQuery('table_id', 'in', tableTypes.map(({ sys_id }) => sys_id));
     relatedListSr.selectAttributes(['table_id']);
     relatedListSr.query();
     while (relatedListSr.next()) {
@@ -57,7 +129,7 @@ else if (input.action === 'fetchItamTaskTypes') {
 
     while (relatedListElementSr.next()) {
         const { table_id } = relatedListArr.find(({ sys_id }) => sys_id === relatedListElementSr.getValue('related_list_id'));
-        const table = data.tableTypes.find(({ sys_id }) => sys_id === table_id);
+        const table = tableTypes.find(({ sys_id }) => sys_id === table_id);
 
         if (relatedListElementSr.getValue('related_table_id')) {
             const relatedTableRecord = {
@@ -90,15 +162,15 @@ else if (input.action === 'fetchItamTaskTypes') {
     }
 
     const columnSr = new SimpleRecord('sys_db_column');
-    columnSr.addQuery('table_id', 'in', [...data.tableTypes.map(t => t.sys_id), ...relatedTablesArr.map(t => t.sys_id)]);
+    columnSr.addQuery('table_id', 'in', [...tableTypes.map(t => t.sys_id), ...relatedTablesArr.map(t => t.sys_id)]);
     columnSr.addQuery('column_name', 'not in', ['sys_id']);
     columnSr.selectAttributes(['column_name', 'title', 'table_id']);
     columnSr.query();
     while (columnSr.next()) {
         const columnRecord = { sys_id: columnSr.sys_id, title: columnSr.title, name: columnSr.column_name };
-        const table = data.tableTypes.find(({ sys_id }) => sys_id === columnSr.getValue('table_id'));
+        const table = tableTypes.find(({ sys_id }) => sys_id === columnSr.getValue('table_id'));
         if (table?.name === 'task') {
-            for (const tableIter of data.tableTypes) {
+            for (const tableIter of tableTypes) {
                 tableIter.columns.push(columnRecord);
             }
         }
@@ -109,38 +181,14 @@ else if (input.action === 'fetchItamTaskTypes') {
     }
 
     const tableScriptSr = new SimpleRecord('itam_script_table_mapping');
-    tableScriptSr.addQuery('table_id', 'in', [...data.tableTypes.map(t => t.sys_id), ...relatedTablesArr.map(t => t.sys_id)]);
+    tableScriptSr.addQuery('table_id', 'in', [...tableTypes.map(t => t.sys_id), ...relatedTablesArr.map(t => t.sys_id)]);
     tableScriptSr.selectAttributes(['name', 'table_id']);
     tableScriptSr.query();
     while (tableScriptSr.next()) {
         const scriptRecord = { sys_id: tableScriptSr.sys_id, name: tableScriptSr.name, title: tableScriptSr.name };
-        data.tableTypes.filter(t => t.sys_id === tableScriptSr.getValue('table_id')).forEach(table => table.scripts.push(scriptRecord));
+        tableTypes.filter(t => t.sys_id === tableScriptSr.getValue('table_id')).forEach(table => table.scripts.push(scriptRecord));
         relatedTablesArr.filter(relT => relT.sys_id === tableScriptSr.getValue('table_id')).forEach(relatedTable => relatedTable.scripts.push(scriptRecord));
     }
 
-
-} else if (input.action === "createDocxTemplate") {
-    const { docxBase64, selectTaskField, templateToRealValue, detectedTables } = input;
-    if (!selectTaskField.sys_id) {
-        return;
-    }
-
-    const resultJSON = JSON.stringify({ selectTaskField, templateToRealValue, detectedTables });
-
-    const docxTemplateSr = new SimpleRecord('itam_task_docx_template');
-    docxTemplateSr.setValue('task_table_id', selectTaskField.sys_id);
-    docxTemplateSr.setValue('template_data', resultJSON);
-    const docxTemplateSysId = docxTemplateSr.insert();
-    if (!docxTemplateSysId) {
-        ss.addErrorMessage('Failed to save template');
-        return;
-    }
-    const docId = ss.getDocIdByIds('176580796911236520', docxTemplateSysId);
-    const attachmentService = new SimpleAttachment();
-    const attachmentId = attachmentService.writeBase64(docId, 'template.docx', docxBase64, '.docx');
-    if (!attachmentId) {
-        ss.addErrorMessage('Failed to save base64 template');
-        return;
-    }
-    ss.addSuccessMessage(`Succesfully saved template! into <a href="/record/itam_task_docx_template/${docxTemplateSysId}">Ref to template</a>`);
+    return tableTypes;
 }

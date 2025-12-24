@@ -27,12 +27,15 @@
         emptyColumnOption,
         emptyTableOption,
         onSciptedOptionClick,
+        getExistingDocxTemplateRecords,
+        onSelectExistingDocxTemplateClick,
+        configBeingModified,
     } from "./script.svelte.js";
 </script>
 
 <svelte:window on:click={onWindowClick} />
 
-<div class="upload-specification">
+<div class="upload-specification" style="margin-left: 0;">
     <div class="upload-specification__title">
         <div class="upload-specification__title-text">
             Upload the .docx template document
@@ -113,7 +116,7 @@
                     <label>Drag an .xlsx file or</label>
                 </div>
                 <button
-                    class="src-components-button-___styles-module__Default___Lp0Il process-file__button svelte-1b86uqy"
+                    class="src-components-button-___styles-module__Default___Lp0Il svelte-1b86uqy"
                     onclick={() => uploadFromDevice()}
                 >
                     Upload from device
@@ -203,19 +206,42 @@
             Download preprocessed file</button
         >
 
-        <button
-            class={buttonsState.isUploadPreproccessedDisabled
-                ? "src-components-button-___styles-module__Default___Lp0Il process-file__button primary-button-disabled"
-                : "src-components-button-___styles-module__Default___Lp0Il"}
-            onclick={() => generateTemplate()}
-            disabled={buttonsState.isUploadPreproccessedDisabled}
-        >
-            Generate template
-        </button>
+        {#if !configBeingModified.currentOption?.sys_id}
+            <button
+                class={buttonsState.isUploadPreproccessedDisabled
+                    ? "src-components-button-___styles-module__Default___Lp0Il primary-button-disabled"
+                    : "src-components-button-___styles-module__Default___Lp0Il"}
+                onclick={() => generateTemplate()}
+                disabled={buttonsState.isUploadPreproccessedDisabled}
+            >
+                Generate template
+            </button>
+        {:else}
+            <button
+                class="src-components-button-___styles-module__Default___Lp0Il process-file__button"
+                onclick={() => generateTemplate()}
+                disabled={false}
+            >
+                Update template
+            </button>
+        {/if}
     </div>
 </div>
 
-{#if selectTaskField.isVisible}
+<div style="margin-right: 0; width: 250px;">
+    <Dropdown
+        fieldTitle="Existing template to use"
+        optionField={configBeingModified}
+        optionSource={getExistingDocxTemplateRecords}
+        onBeforeOptionSelectCallback={onSelectExistingDocxTemplateClick}
+        trackedButtons={trackedSelectButtons}
+    ></Dropdown>
+</div>
+
+<div
+    style="margin-top: 50px; grid-column:1/3;"
+    style:display={selectTaskField.isVisible ? "unset" : "none"}
+>
     <Dropdown
         fieldTitle="ITAM Task type"
         optionSource={selectTaskField.options}
@@ -237,210 +263,213 @@
             }
         }}
     ></Dropdown>
-{/if}
 
-<div style="margin-top: 50px;">
-    {#each svelteDetectedTables as table}
-        <div
-            style="display: flex; flex-direction: column; width: 900px; gap: 30px;"
-        >
-            <div style="flex: 1 1 auto;">
-                <div
-                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
-                    data-test="field-Purchase documentation"
-                >
+    <div style="margin-top: 50px; ">
+        {#each svelteDetectedTables as table}
+            <div
+                style="display: flex; flex-direction: column; width: 900px; gap: 30px;"
+            >
+                <div style="flex: 1 1 auto;">
                     <div
-                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
+                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
+                        data-test="field-Purchase documentation"
                     >
                         <div
-                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
+                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
                         >
                             <div
-                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
-                                data-test="document_id-label"
-                            >
-                                <span
-                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-                                    ><span
-                                        >Detected table with following columns:
-                                        {`\n\r\t\t${table.templateName}`}
-                                    </span></span
-                                >
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <Dropdown
-            fieldTitle="Related table"
-            optionField={table.optionField}
-            getFieldTitleCallback={(currentOption) =>
-                currentOption.related_list_name}
-            getOptionTitleCallback={(option) => option.related_list_name}
-            trackedButtons={trackedSelectButtons}
-            optionSource={selectTaskField.currentOption.relatedTables}
-            onBeforeOptionSelectCallback={(optionField, column) => {
-                if (optionField.currentOption !== column) {
-                    for (const col of table.templateColumns) {
-                        col.optionField.currentOption = emptyColumnOption;
-                    }
-                }
-            }}
-        ></Dropdown>
-
-        <div style="margin-left: 100px;">
-            {#if table.optionField.currentOption.sys_id}
-                {#each table.templateColumns as column}
-                    <div
-                        style="display: flex; flex-direction: row; width: 900px; gap: 50px; align-items: center;"
-                    >
-                        <div style="flex: 1 1 auto; max-width: 250px;">
-                            <div
-                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
-                                data-test="field-Purchase documentation"
+                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
                             >
                                 <div
-                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
+                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
+                                    data-test="document_id-label"
+                                >
+                                    <span
+                                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
+                                        ><span
+                                            >Detected table with following
+                                            columns:
+                                            {`\n\r\t\t${table.templateName}`}
+                                        </span></span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <Dropdown
+                fieldTitle="Related table"
+                optionField={table.optionField}
+                getOptionTitleCallback={(option) => option.related_list_name}
+                trackedButtons={trackedSelectButtons}
+                optionSource={selectTaskField.currentOption.relatedTables}
+                onBeforeOptionSelectCallback={(optionField, column) => {
+                    if (optionField.currentOption !== column) {
+                        for (const col of table.templateColumns) {
+                            col.optionField.currentOption = emptyColumnOption;
+                        }
+                    }
+                }}
+            ></Dropdown>
+
+            <div style="margin-left: 100px;">
+                {#if table.optionField.currentOption.sys_id}
+                    {#each table.templateColumns as column}
+                        <div
+                            style="display: flex; flex-direction: row; width: 900px; gap: 50px; align-items: center;"
+                        >
+                            <div style="flex: 1 1 auto; max-width: 250px;">
+                                <div
+                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
+                                    data-test="field-Purchase documentation"
                                 >
                                     <div
-                                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
+                                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
                                     >
                                         <div
-                                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
-                                            data-test="document_id-label"
+                                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
                                         >
-                                            <span
-                                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-                                                ><span>Template field</span
-                                                ></span
+                                            <div
+                                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
+                                                data-test="document_id-label"
                                             >
+                                                <span
+                                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
+                                                    ><span>Template field</span
+                                                    ></span
+                                                >
+                                            </div>
                                         </div>
                                     </div>
+
+                                    <MyInput
+                                        binding={column.template}
+                                        readonly={true}
+                                    ></MyInput>
                                 </div>
-
-                                <MyInput
-                                    binding={column.template}
-                                    readonly={true}
-                                ></MyInput>
                             </div>
+
+                            {#if column.optionField.currentOption.isScripted}
+                                <Dropdown
+                                    optionField={column.optionField}
+                                    optionSource={table.optionField
+                                        .currentOption.scripts}
+                                    trackedButtons={trackedSelectButtons}
+                                    fieldTitle="Script mapping"
+                                ></Dropdown>
+                            {:else if !column.optionField.currentOption.isEnumerationColumn}
+                                <Dropdown
+                                    optionField={column.optionField}
+                                    optionSource={table.optionField
+                                        .currentOption.columns}
+                                    trackedButtons={trackedSelectButtons}
+                                    fieldTitle="Related list column"
+                                ></Dropdown>
+                            {/if}
+
+                            <Checkbox
+                                title="Enumeration column"
+                                checked={column.optionField.currentOption
+                                    .isEnumerationColumn}
+                                onClickCheckbox={() =>
+                                    onEnumerationOptionClick(column)}
+                            ></Checkbox>
+                            <Checkbox
+                                title="Scripted option"
+                                checked={column.optionField.currentOption
+                                    .isScripted}
+                                onClickCheckbox={() =>
+                                    onSciptedOptionClick(column)}
+                            ></Checkbox>
                         </div>
-
-                        {#if column.optionField.currentOption.isScripted}
-                            <Dropdown
-                                optionField={column.optionField}
-                                optionSource={table.optionField.currentOption
-                                    .scripts}
-                                trackedButtons={trackedSelectButtons}
-                                fieldTitle="Script mapping"
-                            ></Dropdown>
-                        {:else if !column.optionField.currentOption.isEnumerationColumn}
-                            <Dropdown
-                                optionField={column.optionField}
-                                optionSource={table.optionField.currentOption
-                                    .columns}
-                                trackedButtons={trackedSelectButtons}
-                                fieldTitle="Related list column"
-                            ></Dropdown>
-                        {/if}
-
-                        <Checkbox
-                            title="Enumeration column"
-                            onClickCheckbox={() =>
-                                onEnumerationOptionClick(column)}
-                        ></Checkbox>
-                        <Checkbox
-                            title="Scripted option"
-                            onClickCheckbox={() => onSciptedOptionClick(column)}
-                        ></Checkbox>
-                    </div>
-                {/each}
-            {/if}
-        </div>
-
-        <div class="black-bar"></div>
-    {/each}
-
-    {#each templateToRealValue as pair}
-        <div
-            style="display: flex; flex-direction: row; gap: 50px;"
-        >
-            <div style="flex: 1 1 auto;">
-                <div
-                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
-                    data-test="field-Purchase documentation"
-                >
-                    <div
-                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
-                    >
-                        <div
-                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
-                        >
-                            <div
-                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
-                                data-test="document_id-label"
-                            >
-                                <span
-                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-                                    ><span>Template field</span></span
-                                >
-                            </div>
-                        </div>
-                    </div>
-
-                    <MyInput binding={pair.template} readonly={true}></MyInput>
-                </div>
-            </div>
-            <div style="flex: 1 1 auto;">
-                <div
-                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
-                    data-test="field-Purchase documentation"
-                >
-                    <div
-                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
-                    >
-                        <div
-                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
-                        >
-                            <div
-                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
-                                data-test="document_id-label"
-                            >
-                                <span
-                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-                                    ><span>Original value</span></span
-                                >
-                            </div>
-                        </div>
-                    </div>
-                    <MyInput binding={pair.originalValue} readonly={true}
-                    ></MyInput>
-                </div>
+                    {/each}
+                {/if}
             </div>
 
-            {#if pair.optionField.currentOption.isScripted}
-                <Dropdown
-                    optionField={pair.optionField}
-                    optionSource={selectTaskField.currentOption.scripts}
-                    fieldTitle="Script mapping"
-                    trackedButtons={trackedSelectButtons}
-                ></Dropdown>
-            {:else}
-                <Dropdown
-                    optionField={pair.optionField}
-                    optionSource={selectTaskField.currentOption.columns}
-                    fieldTitle="Task column to map"
-                    trackedButtons={trackedSelectButtons}
-                ></Dropdown>
-            {/if}
+            <div class="black-bar"></div>
+        {/each}
 
-            <Checkbox
-                title="Scripted option"
-                onClickCheckbox={() => onSciptedOptionClick(pair)}
-            ></Checkbox>
-        </div>
-    {/each}
+        {#each templateToRealValue as pair}
+            <div style="display: flex; flex-direction: row; gap: 50px;">
+                <div style="">
+                    <div
+                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
+                        data-test="field-Purchase documentation"
+                    >
+                        <div
+                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
+                        >
+                            <div
+                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
+                            >
+                                <div
+                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
+                                    data-test="document_id-label"
+                                >
+                                    <span
+                                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
+                                        ><span>Template field</span></span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+
+                        <MyInput binding={pair.template} readonly={true}
+                        ></MyInput>
+                    </div>
+                </div>
+                <div style="">
+                    <div
+                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
+                        data-test="field-Purchase documentation"
+                    >
+                        <div
+                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
+                        >
+                            <div
+                                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
+                            >
+                                <div
+                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
+                                    data-test="document_id-label"
+                                >
+                                    <span
+                                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
+                                        ><span>Original value</span></span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                        <MyInput binding={pair.originalValue} readonly={true}
+                        ></MyInput>
+                    </div>
+                </div>
+
+                {#if pair.optionField.currentOption.isScripted}
+                    <Dropdown
+                        optionField={pair.optionField}
+                        optionSource={selectTaskField.currentOption.scripts}
+                        fieldTitle="Script mapping"
+                        trackedButtons={trackedSelectButtons}
+                    ></Dropdown>
+                {:else}
+                    <Dropdown
+                        optionField={pair.optionField}
+                        optionSource={selectTaskField.currentOption.columns}
+                        fieldTitle="Task column to map"
+                        trackedButtons={trackedSelectButtons}
+                    ></Dropdown>
+                {/if}
+
+                <Checkbox
+                    title="Scripted option"
+                    onClickCheckbox={() => onSciptedOptionClick(pair)}
+                ></Checkbox>
+            </div>
+        {/each}
+    </div>
 </div>
 
 <style>
@@ -471,6 +500,7 @@
         margin-bottom: 16px;
         max-width: 600px;
         margin: auto;
+        width: 100%;
     }
 
     .upload-specification__title {

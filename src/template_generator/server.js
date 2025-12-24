@@ -19,22 +19,36 @@ if (input.action === 'init') {
 }
 
 if (input.action === 'fetchTableColumns') {
-    const { tableNameOfCurrentTask, idOfCurrentTask, requiredColumns } = input;
+    const { tableNameOfCurrentTask, idOfCurrentTask, requiredColumns, requiredScripts } = input;
     const taskSr = new SimpleRecord(tableNameOfCurrentTask);
     taskSr.addQuery('sys_id', idOfCurrentTask);
-    // taskSr.selectAttributes(requiredColumns);
     taskSr.setLimit(1);
     taskSr.query();
-    const returnObject = {};
-    while (taskSr.next()) {
-        for (const column of requiredColumns) {
-            returnObject[column] = taskSr.getDisplayValue(column);
-        }
+    if (!taskSr.next()) {
+        throw new Error('no such task');
     }
-    data.returnObject = returnObject;
-}
+    let returnObject = {};
+    for (const column of requiredColumns) {
+        returnObject[column] = taskSr.getDisplayValue(column);
+    }
+    data.dataOfCurrentTaskPerColumn = returnObject;
 
-if (input.action === 'fetchTableData') {
+    const mappingScriptSr = new SimpleRecord('itam_script_table_mapping');
+    mappingScriptSr.addQuery('sys_id', 'in', requiredScripts.map(t => t.script_id));
+    mappingScriptSr.selectAttributes(['script_text']);
+    mappingScriptSr.query();
+    returnObject = {};
+    while (mappingScriptSr.next()) {
+        const resultOfSciptEvaluation = (() => {
+            eval(mappingScriptSr.script_text);
+            return extractValue(taskSr);
+        })();
+        const matchingTemplate = requiredScripts.find(t => t.script_id === mappingScriptSr.sys_id).template;
+        returnObject[matchingTemplate] = resultOfSciptEvaluation;
+    }
+    data.dataOfCurrentTaskPerScript = returnObject;
+}
+else if (input.action === 'fetchTableData') {
     const { tableColumnDescription, idOfCurrentTask, tableNameOfCurrentTask } = input;
     const relatedListElementSr = new SimpleRecord('sys_ui_related_list_element');
     relatedListElementSr.addQuery('sys_id', 'in', tableColumnDescription.map(dt => dt.related_list_sys_id));
@@ -48,34 +62,57 @@ if (input.action === 'fetchTableData') {
 
     while (relatedListElementSr.next()) {
 
-        resultData.push({ related_list_sys_id: relatedListElementSr.sys_id, rows: [] });
+        resultData.push({ related_list_sys_id: relatedListElementSr.sys_id, rows: [], script_rows: [], });
         const dataOfCurrentTable = resultData.at(-1);
 
-        const currentTable = tableColumnDescription.find(dt => dt.related_list_sys_id === relatedListElementSr.sys_id);
+        const currentDesciption = tableColumnDescription.find(dt => dt.related_list_sys_id === relatedListElementSr.sys_id);
 
         if (relatedListElementSr.getValue('related_list_script_id')) {
 
             const relatedListScriptSr = relatedListElementSr.related_list_script_id;
-            relatedListScriptSr.query_from.name === currentTable.table_name || throwError('Unmatched tablename', relatedListScriptSr.query_from.name, currentTable.table_name);
+            relatedListScriptSr.query_from.name === currentDesciption.table_name || throwError('Unmatched tablename', relatedListScriptSr.query_from.name, currentDesciption.table_name);
 
             const queryFromSr = new SimpleRecord(relatedListScriptSr.query_from.name);
-            const scriptText = relatedListScriptSr.query_with;
+            const queryDataScript = relatedListScriptSr.query_with;
 
             //isolated
             (() => {
+                const mappingScriptSr = new SimpleRecord('itam_script_table_mapping');
+                mappingScriptSr.addQuery('sys_id', 'in', currentDesciption.scripts.map(t => t.script_id));
+                mappingScriptSr.selectAttributes(['script_text']);
+                mappingScriptSr.query();
+                const mappingScriptTexts = [];
+                while (mappingScriptSr.next()) {
+                    mappingScriptTexts.push({
+                        template: currentDesciption.scripts.find(t => t.script_id === mappingScriptSr.sys_id).template,
+                        mappingScriptText: mappingScriptSr.script_text,
+                    });
+                }
                 const current = queryFromSr;
                 const parent = taskSr;
 
-                eval(scriptText);
+                eval(queryDataScript);
 
-                current.selectAttributes(currentTable.columns);
                 current.query();
                 while (current.next()) {
                     const newDataRow = {};
-                    for (const column of currentTable.columns) {
+                    for (const column of currentDesciption.columns) {
                         newDataRow[column] = current.getDisplayValue(column);
                     }
                     dataOfCurrentTable.rows.push(newDataRow);
+
+                    const newScriptDataRow = {};
+                    for (const { template, mappingScriptText } of mappingScriptTexts) {
+                        const scriptResult = (() => {
+
+                            eval(mappingScriptText);
+
+                            return extractValue(current);
+                        })();
+                        newScriptDataRow[template] = scriptResult;
+                    }
+
+                    dataOfCurrentTable.script_rows.push(newScriptDataRow);
                 }
 
             })();
@@ -84,19 +121,26 @@ if (input.action === 'fetchTableData') {
         else {
             const relatedColumnName = relatedListElementSr.related_column_id.column_name;
 
-            relatedListElementSr.related_table_id.name === currentTable.table_name || throwError('Unmatched tablename', relatedListElementSr.related_table_id.name, currentTable.table_name);
+            relatedListElementSr.related_table_id.name === currentDesciptio.table_name || throwError('Unmatched tablename', relatedListElementSr.related_table_id.name, currentDesciptio.table_name);
 
             const relatedTableSr = new SimpleRecord(relatedListElementSr.related_table_id.name);
             relatedTableSr.addQuery(relatedColumnName, taskSr.sys_id);
-            relatedTableSr.selectAttributes(currentTable.columns);
+            relatedTableSr.selectAttributes(currentDesciption.columns);
             while (relatedTableSr.next()) {
                 const newDataRow = {};
-                for (const column of currentTable.columns) {
+                for (const column of currentDesciption.columns) {
                     newDataRow[column] = relatedTableSr.getDisplayValue(column);
                 }
                 dataOfCurrentTable.rows.push(newDataRow);
             }
         }
+
+        if (currentDesciption.scripts.length === 0) {
+            continue;
+        }
+
+
+
     }
 
     data.resultData = resultData;
@@ -104,4 +148,9 @@ if (input.action === 'fetchTableData') {
 
 function throwError(...message) {
     throw new Error(message.join('\t'));
+}
+
+
+function getMappingScriptDataFromDescription(currentDescription) {
+
 }

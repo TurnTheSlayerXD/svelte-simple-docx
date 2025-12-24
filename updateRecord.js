@@ -15,29 +15,31 @@ const password = process.env.LOGIN_PASSWORD;
 
 const sys_id = process.env.WIDGET_ID;
 
-sendRequest({
-    tableName: 'sys_widget',
-    id: sys_id,
-},
-    {
-        client_script: fs.readFileSync('./dist-webpack/bundle.js').toString(),
-        // server_script: fs.readFileSync('./src/svelte_constructor/server.js').toString(),
-        // css: fs.readFileSync('./src/svelte_constructor/css.css').toString(),
-        // template: fs.readFileSync('./src/svelte_constructor/template.html').toString(),
-    })
+new Promise((resolve) => resolve(true))
+    .then(_ => sendRequest({
+        tableName: 'sys_widget',
+        id: sys_id,
+    },
+        {
+            client_script: fs.readFileSync('./dist-webpack/bundle.js').toString(),
+            server_script: fs.readFileSync('./src/svelte_constructor/server.js').toString(),
+            css: fs.readFileSync('./src/svelte_constructor/css.css').toString(),
+            template: fs.readFileSync('./src/svelte_constructor/template.html').toString(),
+        },
+    ))
     // .then(() => sendRequest({
-        // tableName: 'sys_ui_action',
-        // id: '176587443012697588',
+    //     tableName: 'sys_ui_action',
+    //     id: '176587443012697588',
     // }, { script: fs.readFileSync('./src/template_generator/ui_action.js').toString(), },))
-    // .then(() => sendRequest({
-        // tableName: 'sys_widget',
-        // id: '176613180512408342'
-    // }, {
-        // server_script: fs.readFileSync('./src/template_generator/server.js').toString(),
-        // client_script: fs.readFileSync('./src/template_generator/client.js').toString(),
-        // css: fs.readFileSync('./src/template_generator/css.css').toString(),
-        // template: fs.readFileSync('./src/template_generator/template.html').toString(),
-    // }))
+    .then(() => sendRequest({
+        tableName: 'sys_widget',
+        id: '176613180512408342'
+    }, {
+        server_script: fs.readFileSync('./src/template_generator/server.js').toString(),
+        client_script: fs.readFileSync('./src/template_generator/client.js').toString(),
+        css: fs.readFileSync('./src/template_generator/css.css').toString(),
+        template: fs.readFileSync('./src/template_generator/template.html').toString(),
+    }))
     .then(c => {
         console.log('status', c.status)
     }).catch(c => {

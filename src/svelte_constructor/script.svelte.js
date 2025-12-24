@@ -12,6 +12,13 @@ export const enumerationColumnOption = {
     isEnumerationColumn: true
 };
 
+export const emptyScriptedColumnOption = {
+    sys_id: null,
+    title: "--Undefined--",
+    name: null,
+    isScripted: true,
+};
+
 export const emptyTableOption = {
     sys_id: null,
     name: null,
@@ -207,13 +214,19 @@ async function processFile(fileBlob, fileName) {
         );
         s_widget.setFieldValue("tableTypes", '');
 
+        console.log(tableTypes);
         for (const table of tableTypes) {
             table.columns.unshift(emptyColumnOption);
+            table.scripts.forEach(s => s.isScripted = true);
+            table.scripts.unshift(emptyScriptedColumnOption);
             for (const relatedTable of table.relatedTables) {
                 relatedTable.columns.unshift(emptyColumnOption);
+                relatedTable.scripts.forEach(s => s.isScripted = true);
+                relatedTable.scripts.unshift(emptyScriptedColumnOption);
             }
             table.relatedTables.unshift(emptyTableOption);
         }
+
         selectTaskField.options.push(emptyTableOption, ...tableTypes);
         selectTaskField.currentOption = emptyTableOption;
         const combined = withStrs.map((s, i) => ({
@@ -464,8 +477,8 @@ function detectTables(json) {
     }
 }
 
-function getDbProps({ sys_id, name, title, isEnumerationColumn, related_list_name, related_list_sys_id }) {
-    return { sys_id, name, title, isEnumerationColumn, related_list_name, related_list_sys_id };
+function getDbProps({ sys_id, name, title, isEnumerationColumn, related_list_name, related_list_sys_id, isScripted }) {
+    return { sys_id, name, title, isEnumerationColumn, related_list_name, related_list_sys_id, isScripted };
 }
 
 function mobx(obj) {
@@ -541,5 +554,19 @@ export function onEnumerationOptionClick(column) {
     else {
         optionField.previousOption = optionField.currentOption;
         optionField.currentOption = enumerationColumnOption;
+    }
+}
+
+
+export function onSciptedOptionClick(column) {
+
+    const { optionField } = column;
+
+    if (optionField.currentOption?.isScripted) {
+        optionField.currentOption = (optionField.previousOption?.isScripted || optionField.previousOption?.isEnumerationColumn) ? emptyColumnOption : optionField.previousOption;
+    }
+    else {
+        optionField.previousOption = optionField.currentOption;
+        optionField.currentOption = emptyScriptedColumnOption;
     }
 }

@@ -1,6 +1,7 @@
 <script>
     import Checkbox from "./checkbox.svelte";
     import Dropdown from "./dropdown.svelte";
+    import MyInput from "./MyInput.svelte";
     import {
         filezoneDrop,
         uploadContainerDragOver,
@@ -25,6 +26,7 @@
         trackedSelectButtons,
         emptyColumnOption,
         emptyTableOption,
+        onSciptedOptionClick,
     } from "./script.svelte.js";
 </script>
 
@@ -317,56 +319,23 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div
-                                    class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Input___bLmkj"
-                                >
-                                    <div
-                                        class="src-components-dynamicForms-view-field-reference-___styles-module__ReferenceWrap___eRJAI"
-                                    >
-                                        <!-- svelte-ignore a11y_consider_explicit_label -->
-                                        <div
-                                            class="  src-components-dynamicForms-view-field-reference-___styles-module__Reference____LE_r"
-                                        >
-                                            <div
-                                                class="src-components-dynamicForms-view-field-reference-___styles-module__input___ugSOq"
-                                            >
-                                                <div
-                                                    class="src-components-dynamicForms-view-field-reference-___styles-module__FieldWrap___vC5cf"
-                                                >
-                                                    <div
-                                                        style="flex: 1 1 auto;"
-                                                    >
-                                                        <div
-                                                            class="src-components-dynamicForms-view-field-stringInput-___styles-module__Input___SngSj"
-                                                        >
-                                                            <input
-                                                                tabindex="20"
-                                                                type="text"
-                                                                bind:value={
-                                                                    column.template
-                                                                }
-                                                                readonly={true}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                        class="src-components-dynamicForms-view-field-reference-___styles-module__Field___usWmV src-components-dynamicForms-view-field-reference-___styles-module__Hidden___ngVHd"
-                                                    >
-                                                        <button
-                                                            type="button"
-                                                            class="src-components-dynamicForms-view-field-reference-___styles-module__FieldOverlay___flsnR"
-                                                            tabindex="20"
-                                                        ></button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+
+                                <MyInput
+                                    binding={column.template}
+                                    readonly={true}
+                                ></MyInput>
                             </div>
                         </div>
 
-                        {#if !column.optionField.currentOption.isEnumerationColumn}
+                        {#if column.optionField.currentOption.isScripted}
+                            <Dropdown
+                                optionField={column.optionField}
+                                optionSource={table.optionField.currentOption
+                                    .scripts}
+                                trackedButtons={trackedSelectButtons}
+                                fieldTitle="Script mapping"
+                            ></Dropdown>
+                        {:else if !column.optionField.currentOption.isEnumerationColumn}
                             <Dropdown
                                 optionField={column.optionField}
                                 optionSource={table.optionField.currentOption
@@ -381,7 +350,10 @@
                             onClickCheckbox={() =>
                                 onEnumerationOptionClick(column)}
                         ></Checkbox>
-                        
+                        <Checkbox
+                            title="Scripted option"
+                            onClickCheckbox={() => onSciptedOptionClick(column)}
+                        ></Checkbox>
                     </div>
                 {/each}
             {/if}
@@ -392,7 +364,7 @@
 
     {#each templateToRealValue as pair}
         <div
-            style="display: flex; flex-direction: row; width: 900px; gap: 50px;"
+            style="display: flex; flex-direction: row; gap: 50px;"
         >
             <div style="flex: 1 1 auto;">
                 <div
@@ -416,48 +388,8 @@
                             </div>
                         </div>
                     </div>
-                    <div
-                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Input___bLmkj"
-                    >
-                        <div
-                            class="src-components-dynamicForms-view-field-reference-___styles-module__ReferenceWrap___eRJAI"
-                        >
-                            <!-- svelte-ignore a11y_consider_explicit_label -->
-                            <div
-                                class="  src-components-dynamicForms-view-field-reference-___styles-module__Reference____LE_r"
-                            >
-                                <div
-                                    class="src-components-dynamicForms-view-field-reference-___styles-module__input___ugSOq"
-                                >
-                                    <div
-                                        class="src-components-dynamicForms-view-field-reference-___styles-module__FieldWrap___vC5cf"
-                                    >
-                                        <div style="flex: 1 1 auto;">
-                                            <div
-                                                class="src-components-dynamicForms-view-field-stringInput-___styles-module__Input___SngSj"
-                                            >
-                                                <input
-                                                    tabindex="20"
-                                                    type="text"
-                                                    bind:value={pair.template}
-                                                    readonly={true}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div
-                                            class="src-components-dynamicForms-view-field-reference-___styles-module__Field___usWmV src-components-dynamicForms-view-field-reference-___styles-module__Hidden___ngVHd"
-                                        >
-                                            <button
-                                                type="button"
-                                                class="src-components-dynamicForms-view-field-reference-___styles-module__FieldOverlay___flsnR"
-                                                tabindex="20"
-                                            ></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
+                    <MyInput binding={pair.template} readonly={true}></MyInput>
                 </div>
             </div>
             <div style="flex: 1 1 auto;">
@@ -482,59 +414,31 @@
                             </div>
                         </div>
                     </div>
-                    <div
-                        class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Input___bLmkj"
-                    >
-                        <div
-                            class="src-components-dynamicForms-view-field-reference-___styles-module__ReferenceWrap___eRJAI"
-                        >
-                            <!-- svelte-ignore a11y_consider_explicit_label -->
-                            <div
-                                class="  src-components-dynamicForms-view-field-reference-___styles-module__Reference____LE_r"
-                            >
-                                <div
-                                    class="src-components-dynamicForms-view-field-reference-___styles-module__input___ugSOq"
-                                >
-                                    <div
-                                        class="src-components-dynamicForms-view-field-reference-___styles-module__FieldWrap___vC5cf"
-                                    >
-                                        <div style="flex: 1 1 auto;">
-                                            <div
-                                                class="src-components-dynamicForms-view-field-stringInput-___styles-module__Input___SngSj"
-                                            >
-                                                <input
-                                                    tabindex="20"
-                                                    type="text"
-                                                    bind:value={
-                                                        pair.originalValue
-                                                    }
-                                                    readonly={true}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div
-                                            class="src-components-dynamicForms-view-field-reference-___styles-module__Field___usWmV src-components-dynamicForms-view-field-reference-___styles-module__Hidden___ngVHd"
-                                        >
-                                            <button
-                                                type="button"
-                                                class="src-components-dynamicForms-view-field-reference-___styles-module__FieldOverlay___flsnR"
-                                                tabindex="20"
-                                            ></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <MyInput binding={pair.originalValue} readonly={true}
+                    ></MyInput>
                 </div>
             </div>
 
-            <Dropdown
-                optionField={pair.optionField}
-                optionSource={selectTaskField.currentOption.columns}
-                fieldTitle="Task column to map"
-                trackedButtons={trackedSelectButtons}
-            ></Dropdown>
+            {#if pair.optionField.currentOption.isScripted}
+                <Dropdown
+                    optionField={pair.optionField}
+                    optionSource={selectTaskField.currentOption.scripts}
+                    fieldTitle="Script mapping"
+                    trackedButtons={trackedSelectButtons}
+                ></Dropdown>
+            {:else}
+                <Dropdown
+                    optionField={pair.optionField}
+                    optionSource={selectTaskField.currentOption.columns}
+                    fieldTitle="Task column to map"
+                    trackedButtons={trackedSelectButtons}
+                ></Dropdown>
+            {/if}
+
+            <Checkbox
+                title="Scripted option"
+                onClickCheckbox={() => onSciptedOptionClick(pair)}
+            ></Checkbox>
         </div>
     {/each}
 </div>

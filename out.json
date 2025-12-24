@@ -1,42 +1,44 @@
 {
     "selectTaskField": {
-        "sys_id": "168669266704175184",
-        "name": "itam_inventory",
-        "title": "Inventory Task"
+        "sys_id": "168786230608950393",
+        "name": "itam_asset_allocation",
+        "title": "Allocation Task"
     },
     "templateToRealValue": [
         {
             "template": "{{field_0}}",
-            "originalValue": "_____________________________________",
+            "originalValue": "______",
             "value": {
-                "sys_id": "171472483910965827",
-                "name": "automated",
-                "title": "Automated"
+                "sys_id": "176657387110311947",
+                "name": "Extract city from stock location",
+                "title": "Extract city from stock location",
+                "isScripted": true
             }
         },
         {
             "template": "{{field_1}}",
             "originalValue": "____________",
             "value": {
-                "sys_id": "168681385600586416",
-                "name": "inventory_documents_ids",
-                "title": "Inventory documents"
+                "sys_id": "168795559601843626",
+                "name": "stock_id",
+                "title": "Stock"
             }
         },
         {
             "template": "{{field_2}}",
             "originalValue": "_________",
             "value": {
-                "sys_id": "168681328502439375",
-                "name": "stock_id",
-                "title": "Stock"
+                "sys_id": "176657387110311947",
+                "name": "Extract city from stock location",
+                "title": "Extract city from stock location",
+                "isScripted": true
             }
         },
         {
             "template": "{{field_3}}",
             "originalValue": "____",
             "value": {
-                "sys_id": "168681328502439375",
+                "sys_id": "168795559601843626",
                 "name": "stock_id",
                 "title": "Stock"
             }
@@ -45,108 +47,117 @@
             "template": "{{field_4}}",
             "originalValue": "____________________",
             "value": {
-                "sys_id": "168681385600586416",
-                "name": "inventory_documents_ids",
-                "title": "Inventory documents"
+                "sys_id": "168795543706834237",
+                "name": "user_id",
+                "title": "Allocate to"
             }
         },
         {
             "template": "{{field_5}}",
             "originalValue": "__________________",
             "value": {
-                "sys_id": "168681181708370497",
-                "name": "inventory_commission_ids",
-                "title": "Inventory commission"
+                "sys_id": "155931135900001098",
+                "name": "sys_created_at",
+                "title": "Created at"
             }
         },
         {
             "template": "{{field_6}}",
             "originalValue": "____________________",
             "value": {
-                "sys_id": "171472483910965827",
-                "name": "automated",
-                "title": "Automated"
+                "sys_id": null,
+                "name": null,
+                "title": "--Undefined--"
             }
         },
         {
             "template": "{{field_7}}",
             "originalValue": "__________________",
             "value": {
-                "sys_id": "168681385600586416",
-                "name": "inventory_documents_ids",
-                "title": "Inventory documents"
+                "sys_id": "156943341304220556",
+                "name": "caller",
+                "title": "Caller"
             }
         },
         {
             "template": "{{field_8}}",
-            "originalValue": "___________________",
+            "originalValue": "_____________________________________",
             "value": {
-                "sys_id": "168958008703817380",
-                "name": "new_responsible_task_id",
-                "title": "New responsible task"
+                "sys_id": null,
+                "name": null,
+                "title": "--Undefined--"
             }
         },
         {
             "template": "{{field_9}}",
             "originalValue": "_________________",
             "value": {
-                "sys_id": "168681311104170376",
-                "name": "location_id",
-                "title": "Location"
+                "sys_id": "155931135900001098",
+                "name": "sys_created_at",
+                "title": "Created at"
             }
         },
         {
             "template": "{{field_10}}",
             "originalValue": "____________",
             "value": {
-                "sys_id": "168681328502439375",
-                "name": "stock_id",
-                "title": "Stock"
+                "sys_id": null,
+                "name": null,
+                "title": "--Undefined--"
             }
         },
         {
             "template": "{{field_11}}",
-            "originalValue": "_________________________________________________________",
+            "originalValue": "___________________",
             "value": {
-                "sys_id": "168681181708370497",
-                "name": "inventory_commission_ids",
-                "title": "Inventory commission"
+                "sys_id": "156943341305917093",
+                "name": "contact",
+                "title": "Contact"
             }
         },
         {
             "template": "{{field_12}}",
             "originalValue": "____",
             "value": {
-                "sys_id": "168681385600586416",
-                "name": "inventory_documents_ids",
-                "title": "Inventory documents"
+                "sys_id": "156943341308746896",
+                "name": "subject",
+                "title": "Subject"
             }
         },
         {
             "template": "{{field_13}}",
             "originalValue": "___",
             "value": {
-                "sys_id": "168681328502439375",
-                "name": "stock_id",
-                "title": "Stock"
+                "sys_id": "158088653215716107",
+                "name": "service",
+                "title": "Service"
             }
         },
         {
             "template": "{{field_14}}",
-            "originalValue": "__________________________________",
+            "originalValue": "_________________________________________________________",
             "value": {
-                "sys_id": "171472483910965827",
-                "name": "automated",
-                "title": "Automated"
+                "sys_id": null,
+                "name": null,
+                "title": "--Undefined--"
             }
         },
         {
             "template": "{{field_15}}",
+            "originalValue": "__________________________________",
+            "value": {
+                "sys_id": null,
+                "name": null,
+                "title": "--Undefined--"
+            }
+        },
+        {
+            "template": "{{field_16}}",
             "originalValue": "_____________________",
             "value": {
-                "sys_id": "168681267900050438",
-                "name": "reason",
-                "title": "Reason"
+                "sys_id": "168795559601843626",
+                "name": "stock_id",
+                "title": "Stock"
             }
         }
     ],
@@ -212,8 +223,8 @@
                 "sys_id": "168537728105091400",
                 "name": "itam_asset",
                 "title": "Asset",
-                "related_list_name": "Assets to be Inventoried",
-                "related_list_sys_id": "169175248407979205"
+                "related_list_name": "Assets",
+                "related_list_sys_id": "168837580300733626"
             },
             "tableOrderIndex": 2,
             "columns": [
@@ -229,41 +240,41 @@
                 {
                     "template": "Наименование",
                     "value": {
+                        "sys_id": "168537728201665478",
+                        "name": "number",
+                        "title": "Number"
+                    }
+                },
+                {
+                    "template": "Серийный номер",
+                    "value": {
+                        "sys_id": "175447942702886002",
+                        "name": "level_in_hierarchy",
+                        "title": "Level"
+                    }
+                },
+                {
+                    "template": "Цена, руб.",
+                    "value": {
+                        "sys_id": "175982295012161491",
+                        "name": "total_costs",
+                        "title": "Total costs"
+                    }
+                },
+                {
+                    "template": "Кол-во,шт.",
+                    "value": {
                         "sys_id": "175982314416519640",
                         "name": "currency_id",
                         "title": "Currency"
                     }
                 },
                 {
-                    "template": "Серийный номер",
-                    "value": {
-                        "sys_id": "174783449812719672",
-                        "name": "purchase_specification_item_id",
-                        "title": "Purchase specification item"
-                    }
-                },
-                {
-                    "template": "Цена, руб.",
-                    "value": {
-                        "sys_id": "174729229718088815",
-                        "name": "itam_purchase_request_id",
-                        "title": "Purchase request"
-                    }
-                },
-                {
-                    "template": "Кол-во,шт.",
-                    "value": {
-                        "sys_id": "173891419816449154",
-                        "name": "cost_center_id",
-                        "title": "Cost center"
-                    }
-                },
-                {
                     "template": "Сумма, руб.",
                     "value": {
-                        "sys_id": "169210836508508563",
-                        "name": "warranty_id",
-                        "title": "Warranty contract"
+                        "sys_id": "175447942702886002",
+                        "name": "level_in_hierarchy",
+                        "title": "Level"
                     }
                 }
             ]

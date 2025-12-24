@@ -66,21 +66,35 @@ async function doGenerationAlgorithm() {
     eval(docxScriptText);
 
 
-    const patches = {};
+    const onlyColumnMatches = templateRecord.templateToRealValue
+        .filter(dt => !dt.value.isScripted && dt.value.sys_id)
+        .map(dt => dt.value.name);
+    const onlyScriptMatches = templateRecord.templateToRealValue
+        .filter(dt => dt.value.isScripted && dt.value.sys_id)
+        .map(dt => ({ template: dt.template, script_id: dt.value.sys_id }));
+
     s_widget.setFieldValue('tableNameOfCurrentTask', s_form.getTableName());
     s_widget.setFieldValue('idOfCurrentTask', s_form.getUniqueValue());
-    s_widget.setFieldValue('requiredColumns', templateRecord.templateToRealValue.map(dt => dt.value.name));
+    s_widget.setFieldValue('requiredColumns', onlyColumnMatches);
+    s_widget.setFieldValue('requiredScripts', onlyScriptMatches);
     await serverUpdate('fetchTableColumns');
-    const returnObject = s_widget.getFieldValue('returnObject');
+    const dataOfCurrentTaskPerColumn = s_widget.getFieldValue('dataOfCurrentTaskPerColumn');
+    const dataOfCurrentTaskPerScript = s_widget.getFieldValue('dataOfCurrentTaskPerScript');
+    const patches = {};
+
+
     for (const { template, originalValue, value: dbValue } of templateRecord.templateToRealValue) {
-        let textToPush;
+        let textToPush = '';
+
         if (dbValue.sys_id) {
-            const displayValue = returnObject[dbValue.name];
-            // !!displayValue || throwError(returnObject);
-            textToPush = !!displayValue ? displayValue : originalValue;
-        } else {
+            textToPush = dbValue.isScripted ? String(dataOfCurrentTaskPerScript[template]) : String(dataOfCurrentTaskPerColumn[dbValue.name]);
+        }
+
+        if (!textToPush) {
             textToPush = originalValue;
         }
+
+        console.log('textToPush', textToPush);
         const fixedTemplate = template.replace('{{', '').replace('}}', '');
         patches[fixedTemplate] = { type: docx.PatchType.PARAGRAPH, children: [new docx.TextRun(textToPush)] };
     }
@@ -98,7 +112,12 @@ async function doGenerationAlgorithm() {
         .map(table => ({
             table_name: table.value.name,
             related_list_sys_id: table.value.related_list_sys_id,
-            columns: table.columns.filter(col => col.value.sys_id).map(col => col.value.name),
+            columns: table.columns
+                .filter(col => col.value.sys_id && !col.value.isScripted)
+                .map(col => col.value.name),
+            scripts: table.columns
+                .filter(col => col.value.sys_id && col.value.isScripted)
+                .map(col => ({ script_id: col.value.sys_id, template: col.template })),
         }));
 
     console.log(tableColumnDescription);
@@ -107,17 +126,25 @@ async function doGenerationAlgorithm() {
 
     const tablesWithRows = s_widget.getFieldValue('resultData');
 
-    templateRecord.detectedTables.forEach(dt => {
+    for (const dt of templateRecord.detectedTables) {
         if (dt.value.sys_id) {
             const rowsOfAlgo = [];
             console.log('tablesWithRows', tablesWithRows.map(t => t.related_list_sys_id));
             console.log('templateRecord.detectedTables', templateRecord.detectedTables.map(t => t.value.related_list_sys_id));
-            const rowData = tablesWithRows
-                .find(({ related_list_sys_id }) => related_list_sys_id === dt.value.related_list_sys_id)
-                .rows;
+
+            const iterTable = tablesWithRows
+                .find(({ related_list_sys_id }) => related_list_sys_id === dt.value.related_list_sys_id);
+            const rowData = iterTable.rows;
+            const scriptRowData = iterTable.script_rows;
+
+            rowData.length === scriptRowData.length || throwError('Unreachable');
 
             let enumerationIndex = 1;
-            for (const row of rowData) {
+            for (let rowIndex = 0; rowIndex < rowData.length; ++rowIndex) {
+
+                const row = rowData[rowIndex];
+                const scriptRow = scriptRowData[rowIndex];
+
                 const rowOfAlgo = [];
                 for (const { value } of dt.columns) {
                     if (value.isEnumerationColumn) {
@@ -128,19 +155,36 @@ async function doGenerationAlgorithm() {
                     }
                 }
                 ++enumerationIndex;
-                for (const [key, value] of Object.entries(row)) {
+
+                // handling per column data 
+                for (const [column, value] of Object.entries(row)) {
                     for (let indexOfColumn = 0; indexOfColumn < dt.columns.length; ++indexOfColumn) {
-                        if (dt.columns[indexOfColumn].value.name === key) {
+                        const dt_iter = dt.columns[indexOfColumn];
+                        if (!dt_iter.value.isScripted && dt_iter.value.name === column) {
                             (0 <= indexOfColumn && indexOfColumn < rowOfAlgo.length) || throwError('index out of range');
                             rowOfAlgo[indexOfColumn] = value;
                         }
                     }
                 }
+                //handling per script data
+                for (const [template, value_from_script] of Object.entries(scriptRow)) {
+                    for (let indexOfColumn = 0; indexOfColumn < dt.columns.length; ++indexOfColumn) {
+                        const dt_iter = dt.columns[indexOfColumn];
+
+                        if (dt_iter.value.isScripted && dt_iter.template === template) {
+                            (0 <= indexOfColumn && indexOfColumn < rowOfAlgo.length) || throwError('index out of range');
+                            rowOfAlgo[indexOfColumn] = value_from_script;
+                        }
+                    }
+                }
+
                 rowsOfAlgo.push(rowOfAlgo);
             }
+
             dt.rows = rowsOfAlgo;
+
         }
-    });
+    }
 
     let globalTableIndex = 0;
     function detectTables(json) {

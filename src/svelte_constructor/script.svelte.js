@@ -38,11 +38,7 @@ export const emptyTableOption = {
         }],
 };
 
-export const trackedSelectButtons = [];
 
-export function addSelfToTrackedButtons(btn) {
-    trackedSelectButtons.push(btn);
-}
 
 let docxUrl = "";
 let files;
@@ -68,7 +64,6 @@ export const containerState = $state({ isDragging: false });
 export const selectTaskField = $state({
     isVisible: false,
     options: [],
-    isOptionsOpened: false,
     fieldHook: null,
     optionsHook: null,
 
@@ -77,19 +72,16 @@ export const selectTaskField = $state({
     reset: function () {
         this.isVisible = false;
         this.options = [];
-        this.isOptionsOpened = false;
         this.currentOption = null;
     },
 });
 
 export const configBeingModified = $state({
     currentOption: null,
-    isOptionsOpened: false,
     fieldHook: null,
     optionsHook: null,
 });
 
-addSelfToTrackedButtons(selectTaskField);
 
 function resetWidgetState() {
     selectTaskField.reset();
@@ -109,18 +101,6 @@ serverUpdate("fetchDocxScript").then(() => {
     s_widget.setFieldValue("docxLibraryScript", "");
 });
 
-export function onWindowClick(e) {
-    let { target } = e;
-    while (target && !target.getAttribute("dropdown")) {
-        target = target.parentElement;
-    }
-
-    if (!target) {
-        for (const btn of trackedSelectButtons) {
-            btn.isOptionsOpened = false;
-        }
-    }
-}
 
 export function uploadFromDevice() {
     const fileInput = document.createElement("input");
@@ -239,7 +219,6 @@ async function processFile(fileBlob, fileName) {
             template: s,
             originalValue: regexReplacer.replacedValues[i],
             optionField: {
-                isOptionsOpened: false,
                 currentOption: emptyColumnOption,
                 fieldHook: null,
                 optionsHook: null,
@@ -247,9 +226,6 @@ async function processFile(fileBlob, fileName) {
         }));
 
         templateToRealValue.push(...combined);
-        for (const btn of templateToRealValue) {
-            addSelfToTrackedButtons(btn.optionField);
-        }
 
         //{ template: string, title: string | null, cols: string[], sourceIndex: number };
         // prototype: {templateName: string | undefined, templateColumns: { templateName: string, currentOption }[], } []
@@ -258,25 +234,17 @@ async function processFile(fileBlob, fileName) {
                 tableOrderIndex: t.tableIndex,
                 templateName: t.cols.join(" | "),
                 optionField: {
-                    isOptionsOpened: false,
                     currentOption: emptyTableOption,
                 },
                 templateColumns: t.cols.map((colName) => ({
                     template: colName,
                     optionField: {
                         currentOption: emptyColumnOption,
-                        isOptionsOpened: false,
                     },
                 })),
             })),
         );
 
-        for (const tableBtn of svelteDetectedTables) {
-            addSelfToTrackedButtons(tableBtn.optionField);
-            for (const colBtn of tableBtn.templateColumns) {
-                addSelfToTrackedButtons(colBtn.optionField);
-            }
-        }
     } catch (err) {
         console.error(err);
     }
@@ -321,68 +289,6 @@ export async function handleFileAsync(ev) {
     uploadedFiles.push(file);
 }
 
-export function onSelectTaskFieldClick() {
-    for (const btn of trackedSelectButtons.filter(
-        (btn) => btn !== selectTaskField,
-    )) {
-        btn.isOptionsOpened = false;
-    }
-
-    const { fieldHook, optionsHook } = selectTaskField;
-    // optionsHook.style.width = fieldHook.offsetWidth + "px";
-    optionsHook.style.minWidth = fieldHook.offsetWidth + "px";
-    optionsHook.style.left = fieldHook.offsetLeft + "px";
-    optionsHook.style.top =
-        fieldHook.offsetTop + fieldHook.offsetHeight + "px";
-    selectTaskField.isOptionsOpened = !selectTaskField.isOptionsOpened;
-}
-
-export function onChooseColumnClick(optionField) {
-    for (const btn of trackedSelectButtons.filter(
-        (btn) => btn !== optionField,
-    )) {
-        btn.isOptionsOpened = false;
-    }
-
-    const { fieldHook, optionsHook } = optionField;
-    optionField.isOptionsOpened = !optionField.isOptionsOpened;
-    // optionsHook.style.width = fieldHook.offsetWidth + "px";
-    optionsHook.style.minWidth = fieldHook.offsetWidth + "px";
-    optionsHook.style.left = fieldHook.offsetLeft + "px";
-    optionsHook.style.top =
-        fieldHook.offsetTop + fieldHook.offsetHeight + "px";
-}
-
-export function onChooseRelatedTableClick(optionField) {
-    onChooseColumnClick(optionField);
-}
-
-export function onChooseRelatedTableColumn(relatedTable, table) {
-    if (relatedTable !== table.optionField) {
-        for (const col of table.templateColumns) {
-            col.optionField.currentOption =
-                emptyColumnOption;
-        }
-    }
-    table.optionField.currentOption = relatedTable;
-    table.optionField.isOptionsOpened = false;
-}
-
-export function onClickSelectTaskType(opt) {
-    if (opt !== selectTaskField.currentOption) {
-        for (const { optionField } of templateToRealValue) {
-            optionField.currentOption = emptyColumnOption;
-        }
-        for (const relatedTable of svelteDetectedTables) {
-            relatedTable.optionField.currentOption = emptyTableOption;
-            for (const { optionField } of relatedTable.templateColumns) {
-                optionField.currentOption = emptyColumnOption;
-            }
-        }
-    }
-    selectTaskField.currentOption = opt;
-    selectTaskField.isOptionsOpened = false;
-}
 
 let tablesFromDocx = [];
 function detectTables(json) {
@@ -639,7 +545,6 @@ export async function onSelectExistingDocxTemplateClick(optionField, column) {
         template: cnf.template,
         originalValue: cnf.originalValue,
         optionField: {
-            isOptionsOpened: false,
             currentOption: cnf.value,
             fieldHook: null,
             optionsHook: null,
@@ -655,7 +560,6 @@ export async function onSelectExistingDocxTemplateClick(optionField, column) {
             tableOrderIndex: cnf.tableOrderIndex,
             templateName: cnf.columns.map(col => col.template).join(" | "),
             optionField: {
-                isOptionsOpened: false,
                 // special because we need references to tableTypes
                 currentOption: tableTypes
                     .find(table => table.sys_id === currentConfig.table_id)
@@ -665,11 +569,23 @@ export async function onSelectExistingDocxTemplateClick(optionField, column) {
             templateColumns: cnf.columns.map((col) => ({
                 template: col.template,
                 optionField: {
-                    isOptionsOpened: false,
                     currentOption: col.value,
                 }
             })),
         }));
     clearArray(svelteDetectedTables);
     svelteDetectedTables.push(...newSvelteDetectedTables);
+}
+
+export function log_svelte(...args) {
+    const arr = [];
+    for (const arg of args) {
+        if (typeof arg === 'object') {
+            arr.push(JSON.parse(JSON.stringify(arg)));
+        }
+        else {
+            arr.push(arg);
+        }
+    }
+    console.log(...arr);
 }

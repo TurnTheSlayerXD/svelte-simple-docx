@@ -1,6 +1,7 @@
 <script>
     import Checkbox from "./checkbox.svelte";
     import Dropdown from "./dropdown.svelte";
+    import { onWindowClick } from "./dropdown.svelte";
     import MyInput from "./MyInput.svelte";
     import {
         filezoneDrop,
@@ -11,19 +12,12 @@
         downloadPreprocessedFile,
         uploadFromDevice,
         selectTaskField,
-        onSelectTaskFieldClick,
-        onWindowClick,
         containerState,
         buttonsState,
         svelteDetectedTables,
         templateToRealValue,
-        onClickSelectTaskType,
-        onChooseColumnClick,
-        onChooseRelatedTableClick,
-        onChooseRelatedTableColumn,
         generateTemplate,
         onEnumerationOptionClick,
-        trackedSelectButtons,
         emptyColumnOption,
         emptyTableOption,
         onSciptedOptionClick,
@@ -33,7 +27,7 @@
     } from "./script.svelte.js";
 </script>
 
-<svelte:window on:click={onWindowClick} />
+<svelte:window on:click={(event) => onWindowClick(event)} />
 
 <div class="upload-specification" style="margin-left: 0;">
     <div class="upload-specification__title">
@@ -234,7 +228,6 @@
         optionField={configBeingModified}
         optionSource={getExistingDocxTemplateRecords}
         onBeforeOptionSelectCallback={onSelectExistingDocxTemplateClick}
-        trackedButtons={trackedSelectButtons}
     ></Dropdown>
 </div>
 
@@ -246,7 +239,6 @@
         fieldTitle="ITAM Task type"
         optionSource={selectTaskField.options}
         optionField={selectTaskField}
-        trackedButtons={trackedSelectButtons}
         onBeforeOptionSelectCallback={(unused, opt) => {
             if (opt !== selectTaskField.currentOption) {
                 for (const { optionField } of templateToRealValue) {
@@ -303,7 +295,6 @@
                 fieldTitle="Related table"
                 optionField={table.optionField}
                 getOptionTitleCallback={(option) => option.related_list_name}
-                trackedButtons={trackedSelectButtons}
                 optionSource={selectTaskField.currentOption.relatedTables}
                 onBeforeOptionSelectCallback={(optionField, column) => {
                     if (optionField.currentOption !== column) {
@@ -356,7 +347,6 @@
                                     optionField={column.optionField}
                                     optionSource={table.optionField
                                         .currentOption.scripts}
-                                    trackedButtons={trackedSelectButtons}
                                     fieldTitle="Script mapping"
                                 ></Dropdown>
                             {:else if !column.optionField.currentOption.isEnumerationColumn}
@@ -364,7 +354,6 @@
                                     optionField={column.optionField}
                                     optionSource={table.optionField
                                         .currentOption.columns}
-                                    trackedButtons={trackedSelectButtons}
                                     fieldTitle="Related list column"
                                 ></Dropdown>
                             {/if}
@@ -452,20 +441,19 @@
                         optionField={pair.optionField}
                         optionSource={selectTaskField.currentOption.scripts}
                         fieldTitle="Script mapping"
-                        trackedButtons={trackedSelectButtons}
                     ></Dropdown>
                 {:else}
                     <Dropdown
                         optionField={pair.optionField}
                         optionSource={selectTaskField.currentOption.columns}
                         fieldTitle="Task column to map"
-                        trackedButtons={trackedSelectButtons}
                     ></Dropdown>
                 {/if}
 
                 <Checkbox
                     title="Scripted option"
                     onClickCheckbox={() => onSciptedOptionClick(pair)}
+                    checked={pair.optionField.currentOption.isScripted}
                 ></Checkbox>
             </div>
         {/each}

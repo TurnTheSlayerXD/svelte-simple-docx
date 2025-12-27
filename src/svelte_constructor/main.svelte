@@ -1,4 +1,5 @@
 <script>
+    import RenderDocx from "./render_docx.svelte";
     import Checkbox from "./checkbox.svelte";
     import Dropdown from "./dropdown.svelte";
     import { onWindowClick } from "./dropdown.svelte";
@@ -24,10 +25,49 @@
         getExistingDocxTemplateRecords,
         onSelectExistingDocxTemplateClick,
         configBeingModified,
+        log_svelte,
     } from "./script.svelte.js";
+
+    $effect(() => {
+        console.log(
+            "new templateToRealValue length =",
+            templateToRealValue.length,
+        );
+    });
+    $effect(() => {
+        console.log("EXECUTED EFFECT");
+        log_svelte(templateToRealValue);
+        for (let i = 0; i < templateToRealValue.length; ++i) {
+            let t = templateToRealValue[i];
+            if (t.previewField) {
+                const { renderRootId, expression } = t.previewField;
+                const renderRoot = document.getElementById(renderRootId);
+                const iterResult = document.evaluate(expression, renderRoot);
+                let targetNode = iterResult.iterateNext();
+                if (!targetNode) {
+                    throw new Error(
+                        `failed obtaining node from template ${fieldTemplate}`,
+                    );
+                }
+                if (
+                    t.optionField.currentOption.sys_id ||
+                    t.optionField.currentOption.isEnumerationColumn
+                ) {
+                    targetNode.style.backgroundColor = "green";
+                } else {
+                    targetNode.style.backgroundColor = "yellow";
+                }
+            }
+        }
+    });
 </script>
 
 <svelte:window on:click={(event) => onWindowClick(event)} />
+
+<RenderDocx
+    templateFields={templateToRealValue}
+    templateTableColumns={svelteDetectedTables}
+></RenderDocx>
 
 <div class="upload-specification" style="margin-left: 0;">
     <div class="upload-specification__title">
@@ -110,13 +150,14 @@
                     <label>Drag an .xlsx file or</label>
                 </div>
                 <button
-                    class="src-components-button-___styles-module__Default___Lp0Il svelte-1b86uqy"
+                    class="src-components-button-___styles-module__Default___Lp0Il"
                     onclick={() => uploadFromDevice()}
                 >
                     Upload from device
                 </button>
             </div>
         </div>
+
         {#each uploadedFiles as file}
             <div id="uploadedFileContainer" class="uploadedFileContainer">
                 <div class="uploadedFileContainer__fileContent">

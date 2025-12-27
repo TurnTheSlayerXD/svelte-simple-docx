@@ -39,7 +39,7 @@ export const emptyTableOption = {
 };
 
 
-
+let currentDocxArrayBuffer;
 let docxUrl = "";
 let files;
 
@@ -49,6 +49,7 @@ export const docxFiles = {
 };
 
 export const templateToRealValue = $state([]);
+
 
 // prototype: {templateName: string | undefined, templateColumns: {templateName: string, currentOption }[], } []
 export const svelteDetectedTables = $state([]);
@@ -115,20 +116,9 @@ export function uploadFromDevice() {
         }
         removeFile(uploadedFiles);
         const file = files[0];
-
         const arrayBuffer = await file.arrayBuffer();
-        s_widget.setFieldValue("docxFileArrayBuffer", arrayBuffer);
-        s_widget.setFieldValue("docxFileName", file.name);
-        await serverUpdate("createAttachmentAndReturnUrl");
-        s_widget.setFieldValue("docxFileArrayBuffer", '');
-        s_widget.setFieldValue("docxFileName", '');
-
-        const attachmentUrl = s_widget.getFieldValue("attachmentUrl");
-        console.log("attachmenturl", attachmentUrl);
-        s_widget.setFieldValue("attachmentUrl", "");
-
+        currentDocxArrayBuffer = arrayBuffer;
         await processFile(arrayBuffer, file.name);
-
         uploadedFiles.push({ fileName: file.name });
     };
 
@@ -151,18 +141,28 @@ export function removeFile(file) {
     buttonsState.isUploadPreproccessedDisabled = true;
     return uploadedFiles.shift();
 }
+
+import { renderAsync } from "../../docxjs/dist/docx-preview.mjs"
+import { getPreviewObjectFromFieldTemplate, getPreviewObjectFromTableTemplate } from "./preview_builder.svelte";
+
+async function doDocxRendering(blob) {
+    const docxRenderRoot = document.getElementById("docx-render-root");
+    const rsp = await renderAsync(blob, docxRenderRoot);
+    return "docx-render-root";
+}
+
 // import * as docx from "../../../../dev_scripts";
 async function processFile(fileBlob, fileName) {
     try {
-        const withStrs = [];
+        const replacementFields = [];
         let gen = function* () {
             let i = 0;
             while (true) {
                 let obj = {};
-                withStrs.push(`{{field_${i++}}}`);
+                replacementFields.push(`{{field_${i++}}}`);
                 obj = {
                     type: docx.PatchType.PARAGRAPH,
-                    children: [new docx.TextRun(withStrs.at(-1))],
+                    children: [new docx.TextRun(replacementFields.at(-1))],
                 };
                 yield obj;
             }
@@ -186,6 +186,8 @@ async function processFile(fileBlob, fileName) {
             },
             detectTables,
         );
+
+        const previewRenderRoot = await doDocxRendering(outputBlob);
 
         docxFiles.sourceDocx = fileBlob;
         docxFiles.templateDocx = outputBlob;
@@ -215,17 +217,18 @@ async function processFile(fileBlob, fileName) {
 
         selectTaskField.options.push(emptyTableOption, ...tableTypes);
         selectTaskField.currentOption = emptyTableOption;
-        const combined = withStrs.map((s, i) => ({
-            template: s,
-            originalValue: regexReplacer.replacedValues[i],
+
+        const remplacementWithReplaced = replacementFields.map((template, index) => ({
+            template,
+            originalValue: regexReplacer.replacedValues[index],
             optionField: {
                 currentOption: emptyColumnOption,
                 fieldHook: null,
                 optionsHook: null,
             },
+            previewField: getPreviewObjectFromFieldTemplate(previewRenderRoot, template),
         }));
-
-        templateToRealValue.push(...combined);
+        templateToRealValue.push(...remplacementWithReplaced);
 
         //{ template: string, title: string | null, cols: string[], sourceIndex: number };
         // prototype: {templateName: string | undefined, templateColumns: { templateName: string, currentOption }[], } []
@@ -241,6 +244,7 @@ async function processFile(fileBlob, fileName) {
                     optionField: {
                         currentOption: emptyColumnOption,
                     },
+                    previewField: getPreviewObjectFromTableTemplate(previewRenderRoot, t.tableIndex, colName),
                 })),
             })),
         );
@@ -394,9 +398,6 @@ function getDbProps({ sys_id, name, title, isEnumerationColumn, related_list_nam
     return { sys_id, name, title, isEnumerationColumn, related_list_name, related_list_sys_id, isScripted };
 }
 
-function mobx(obj) {
-    return JSON.parse(JSON.stringify(obj));
-}
 
 export async function generateTemplate() {
     buttonsState.isUploadPreproccessedDisabled = true;
@@ -446,10 +447,19 @@ function base64EncodeArrayBuffer(buffer) {
     let binary = '';
     const bytes = new Uint8Array(buffer);
     const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
+    for (let i = 0; i < len; ++i) {
         binary += String.fromCharCode(bytes[i]);
     }
     return window.btoa(binary);
+}
+
+function base64DecodeIntoArrayBuffer(base64) {
+    const bytes = [];
+    const decodedStr = window.atob(base64);
+    for (let i = 0; i < decodedStr.length; ++i) {
+        bytes.push(decodedStr.charCodeAt(i));
+    }
+    return new Uint8Array(bytes);
 }
 
 export function onEnumerationOptionClick(column) {
@@ -509,15 +519,19 @@ export async function onSelectExistingDocxTemplateClick(optionField, column) {
     s_widget.setFieldValue('docxTemplateSysId', column.sys_id);
     await serverUpdate('getExistingDocxTemplateConfigById');
     const currentConfig = JSON.parse(s_widget.getFieldValue('docxTemplateRecord'));
+    const base64 = s_widget.getFieldValue('base64');
     s_widget.setFieldValue('docxTemplateRecord', '');
+    s_widget.setFieldValue('base64', '');
+
+    currentDocxArrayBuffer = base64DecodeIntoArrayBuffer(base64);
+
+    const previewRootId = await doDocxRendering(new Blob([currentDocxArrayBuffer]));
 
     await serverUpdate("fetchItamTaskTypes");
     const tableTypes = JSON.parse(s_widget.getFieldValue("tableTypes"));
     s_widget.setFieldValue("tableTypes", '');
 
-
     selectTaskField.isVisible = true;
-
 
     for (const table of tableTypes) {
         table.columns.unshift(emptyColumnOption);
@@ -549,9 +563,12 @@ export async function onSelectExistingDocxTemplateClick(optionField, column) {
             fieldHook: null,
             optionsHook: null,
         },
+        previewField: getPreviewObjectFromFieldTemplate(previewRootId, cnf.template),
     }));
     clearArray(templateToRealValue);
     templateToRealValue.push(...newTemplateToRealValue);
+
+
 
     // mapping related lists and their columns
     const newSvelteDetectedTables = templateData.detectedTables
@@ -570,7 +587,8 @@ export async function onSelectExistingDocxTemplateClick(optionField, column) {
                 template: col.template,
                 optionField: {
                     currentOption: col.value,
-                }
+                },
+                previewField: getPreviewObjectFromTableTemplate(previewRootId, cnf.tableOrderIndex, col.template),
             })),
         }));
     clearArray(svelteDetectedTables);

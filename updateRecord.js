@@ -22,7 +22,7 @@ new Promise((resolve) => resolve(true))
     },
         {
             client_script: fs.readFileSync('./dist-webpack/bundle.js').toString(),
-            server_script: fs.readFileSync('./src/svelte_constructor/server.js').toString(),
+            // server_script: fs.readFileSync('./src/svelte_constructor/server.js').toString(),
             // css: fs.readFileSync('./src/svelte_constructor/css.css').toString(),
             // template: fs.readFileSync('./src/svelte_constructor/template.html').toString(),
         },

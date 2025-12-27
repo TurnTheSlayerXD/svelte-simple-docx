@@ -58,7 +58,24 @@ else if (input.action === 'getExistingDocxTemplateConfigById') {
     const { docxTemplateSysId } = input;
     const docxTemplateSr = new SimpleRecord('itam_task_docx_template');
     docxTemplateSr.get(docxTemplateSysId);
-    data.docxTemplateRecord = JSON.stringify({ sys_id: docxTemplateSr.sys_id, table_id: docxTemplateSr.getValue('task_table_id'), template_data: JSON.parse(docxTemplateSr.template_data) });
+
+    const itam_task_docx_template_ID = '176580796911236520';
+    const docxTemplateDocumentId = ss.getDocIdByIds(itam_task_docx_template_ID, docxTemplateSysId);
+
+    const attachmentSr = new SimpleRecord('sys_attachment');
+    attachmentSr.addQuery('record_document_id', docxTemplateDocumentId);
+    attachmentSr.selectAttributes('sys_id');
+    attachmentSr.setLimit(1);
+    attachmentSr.query();
+    if (!attachmentSr.next()) {
+        throw new Error('failed fetching docx attachment sysId');
+    }
+    data.docxTemplateRecord = JSON.stringify({
+        sys_id: docxTemplateSr.sys_id,
+        table_id: docxTemplateSr.getValue('task_table_id'),
+        template_data: JSON.parse(docxTemplateSr.template_data),
+    });
+    data.base64 = new SimpleAttachment().readBase64(attachmentSr.sys_id);
 }
 
 else if (input.action === 'getExistingDocxTemplateRecords') {

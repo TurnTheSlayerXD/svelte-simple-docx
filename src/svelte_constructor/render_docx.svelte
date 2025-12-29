@@ -1,35 +1,37 @@
-
 <script>
     const { templateFields, templateTableColumns } = $props();
 
     const state = $state({ isShow: false });
 
-    const CONTAINER_HEIGHT = 600,
-        CONTAINER_WIDTH = 500;
+    const CONTAINER_HEIGHT = 900,
+        CONTAINER_WIDTH = 700;
 
     const rect = document
         .querySelector("#root > span > div > header")
         .getBoundingClientRect();
     let top = rect.height;
-    let right = 0;
+    let left = document.body.getBoundingClientRect().width - CONTAINER_WIDTH;
 
     let containerHook = $state();
     let docxHook = $state();
-
-    let cornerLeft, cornerTop;
+    let contentRect = $state();
+    let cornerLeft, cornerTop, containerWidth, containerHeight;
 
     $effect(() => {
         if (state.isShow) {
-            let { left, top } = containerHook.getBoundingClientRect();
-            (cornerLeft = left), (cornerTop = top);
+            let { left, top, width, height } =
+                containerHook.getBoundingClientRect();
+            cornerLeft = left;
+            cornerTop = top;
+            containerWidth = width;
+            containerHeight = height;
         }
     });
 
     let u, v;
-    let oldMat = [1, 0, 0, 0, 1, 0, 0, 0, 1];
     let tingle;
     const TINGLE_TIMEOUT = 20;
-    const K_MOD = 0.003;
+    const K_MOD = 0.002;
     const ZOOM_MAX_K = 4;
     const ZOOM_MIN_K = 0.2;
 
@@ -49,6 +51,7 @@
         return [a, b, c, d, e, f, g, h, i];
     }
 
+    let oldMat = [0.5, 0, 0.5, 0, 0.5, 0.5, 0, 0, 1];
     function onWheel(event) {
         event.preventDefault();
         event.stopPropagation();
@@ -60,7 +63,13 @@
         setTimeout(() => {
             tingle = false;
         }, TINGLE_TIMEOUT);
+        if (event.deltaY > 0) {
+            u = containerWidth / 2;
+            v = containerHeight / 2;
+        }
 
+        containerHook.style.overflow = "hidden";
+        console.log("contentRect", contentRect);
         const k = 1 + event.deltaY * -K_MOD;
         const modMat = [k, 0, (1 - k) * u, 0, k, (1 - k) * v, 0, 0, 1];
         const newMat = matMul(modMat, oldMat);
@@ -70,6 +79,9 @@
         }
         docxHook.style.transform = `matrix(${newMat[0]},${newMat[3]},${newMat[1]},${newMat[4]},${newMat[2]},${newMat[5]})`;
         oldMat = newMat;
+        setTimeout(() => {
+            containerHook.style.overflow = "auto";
+        }, 800);
     }
 
     let isInsideDocx = false;
@@ -79,34 +91,35 @@
     function onMouseMove(event) {
         event.preventDefault();
         event.stopPropagation();
-        if (mouseMoveTingle) {
-            return;
-        }
-        mouseMoveTingle = true;
-        setTimeout(() => (mouseMoveTingle = false), 10);
-
         u = event.clientX - cornerLeft;
         v = event.clientY - cornerTop;
-        if (isMouseClicked && isInsideDocx) {
-            const modMat = [1, 0, u - prev_u, 0, 1, v - prev_v, 0, 0, 1];
-            const newMat = matMul(modMat, oldMat);
-            docxHook.style.transform = `matrix(${newMat[0]},${newMat[3]},${newMat[1]},${newMat[4]},${newMat[2]},${newMat[5]})`;
-            oldMat = newMat;
-        }
-        prev_u = u;
-        prev_v = v;
+
+        // if (mouseMoveTingle) {
+        //     return;
+        // }
+        // mouseMoveTingle = true;
+        // setTimeout(() => (mouseMoveTingle = false), 10);
+
+        // if (isMouseClicked && isInsideDocx) {
+        //     const modMat = [1, 0, u - prev_u, 0, 1, v - prev_v, 0, 0, 1];
+        //     const newMat = matMul(modMat, oldMat);
+        //     docxHook.style.transform = `matrix(${newMat[0]},${newMat[3]},${newMat[1]},${newMat[4]},${newMat[2]},${newMat[5]})`;
+        //     oldMat = newMat;
+        // }
+        // prev_u = u;
+        // prev_v = v;
     }
 
     function containerOnMouseEnter(event) {
         event.preventDefault();
         event.stopPropagation();
-        document.body.style.overflow = "hidden";
+        // document.body.style.overflow = "hidden";
         isInsideDocx = true;
     }
     function containerOnMouseLeave(event) {
         event.preventDefault();
         event.stopPropagation();
-        document.body.style.overflow = "unset";
+        // document.body.style.overflow = "unset";
         isInsideDocx = false;
         isMouseClicked = false;
     }
@@ -131,7 +144,7 @@
 <div
     class="container"
     style:top={`${top}px`}
-    style:right={`${right}px`}
+    style:left={`${left}px`}
     style:max-width={CONTAINER_WIDTH + "px"}
     style:max-height={CONTAINER_HEIGHT + "px"}
     bind:this={containerHook}
@@ -149,20 +162,20 @@
         Show edited document
     </button>
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-        id="docx-render-root"
-        class="docx-container"
-        style:display={state.isShow ? "block" : "none"}
-        bind:this={docxHook}
-        onwheel={onWheel}
-        onmousemovecapture={onMouseMove}
-        onmousedowncapture={onMouseDown}
-        onmouseupcapture={onMouseUp}
-        ondragcapture={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-        }}
-    ></div>
+    <div class="empty"></div>
+    <div style="display: flex; flex-direction: row;">
+        <div class="empty"></div>
+        <div
+            id="docx-render-root"
+            class="docx-container"
+            style:display={state.isShow ? "block" : "none"}
+            bind:this={docxHook}
+            onwheel={onWheel}
+            onmousemovecapture={onMouseMove}
+        ></div>
+        <div class="empty"></div>
+    </div>
+    <div class="empty"></div>
 </div>
 
 <style>
@@ -173,7 +186,7 @@
         right: 0px;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        overflow: auto;
         box-shadow:
             0px 4px 6px rgba(0, 0, 0, 0.1),
             0px 1px 4px rgba(0, 0, 0, 0.16);
@@ -182,12 +195,19 @@
     .const-btn {
         width: 100%;
         flex: none;
+        position: sticky;
+        top: 0;
     }
 
     .docx-container {
         transition: transform 0.2s ease;
         transform-origin: left top;
-        width: 100%;
-        height: 100%;
+        width: fit-content;
+        height: fit-content;
+    }
+
+    .empty{
+        width: 0;
+        height: 0;
     }
 </style>

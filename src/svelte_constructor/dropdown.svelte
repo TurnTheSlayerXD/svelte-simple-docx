@@ -13,6 +13,7 @@
             }
         }
     }
+
 </script>
 
 <script>
@@ -36,20 +37,19 @@
         const fieldRect = fieldHook.getBoundingClientRect();
         const optionsRect = optionsHook.getBoundingClientRect();
 
+        optionsHook.style.minWidth = fieldHook.offsetWidth + "px";
+        optionsHook.style.left = fieldHook.offsetLeft + "px";
+
         if (
             fieldRect.y + fieldRect.height + optionsRect.height >
             window.innerHeight
         ) {
-            optionsHook.style.minWidth = fieldHook.offsetWidth + "px";
-            optionsHook.style.left = fieldHook.offsetLeft + "px";
             optionsHook.style.bottom =
                 fieldHook.offsetParent.offsetHeight -
                 fieldHook.offsetTop +
                 "px";
             optionsHook.style.top = "unset";
         } else {
-            optionsHook.style.minWidth = fieldHook.offsetWidth + "px";
-            optionsHook.style.left = fieldHook.offsetLeft + "px";
             optionsHook.style.top =
                 fieldHook.offsetTop + fieldHook.offsetHeight + "px";
             optionsHook.style.bottom = "unset";
@@ -91,11 +91,9 @@
 <div style="display:contents;" dropdown="true">
     <div style="flex: 1 1 auto; max-width: 200px;">
         <div
-            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
-        >
+            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L">
             <div
-                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA"
-            >
+                class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA">
                 <div
                     class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc"
                 >
@@ -103,7 +101,7 @@
                         class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
                     >
                         <span
-                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
+                            class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY"
                             ><span
                                 >{!getFieldTitleCallback
                                     ? fieldTitle
@@ -115,14 +113,9 @@
             </div>
             <div
                 class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Input___bLmkj"
-                bind:this={optionField.fieldHook}
-            >
-                <div
-                    class="src-components-dynamicForms-view-field-select-___styles-module__Input___GDQ_t"
-                >
-                    <div
-                        class="src-components-customselect-___styles-module__container___rnMJM"
-                    >
+                bind:this={optionField.fieldHook}>
+                <div class="src-components-dynamicForms-view-field-select-___styles-module__Input___GDQ_t">
+                    <div class="src-components-customselect-___styles-module__container___rnMJM">
                         <button
                             type="button"
                             class="src-components-customselect-___styles-module__input___M2cpK"
@@ -180,36 +173,28 @@
             {#each __optionSource as column}
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
-                {#if optionField.currentOption?.sys_id === column.sys_id}
+                <div
+                    class={"src-components-customselect-___styles-module__menu___XQSV5" 
+                    + (optionField.currentOption?.sys_id === column.sys_id ? " current-option-background" : "") }
+                    onclick={() => onSelectNewValue(optionField, column)}
+                >
                     <div
-                        class="src-components-customselect-___styles-module__menu___XQSV5"
-                        style:background-color="#e7f0fe"
-                        onclick={() => onSelectNewValue(optionField, column)}
+                        class="src-components-customselect-___styles-module__menuItem___UqKfM"
                     >
-                        <div
-                            class="src-components-customselect-___styles-module__menuItem___UqKfM"
-                        >
-                            {column.title}
-                        </div>
+                        {column.title}
                     </div>
-                {:else}
-                    <div
-                        class="src-components-customselect-___styles-module__menu___XQSV5"
-                        onclick={() => onSelectNewValue(optionField, column)}
-                    >
-                        <div
-                            class="src-components-customselect-___styles-module__menuItem___UqKfM"
-                        >
-                            {column.title}
-                        </div>
-                    </div>
-                {/if}
+                </div>
             {/each}
         {/if}
     </div>
 </div>
 
 <style>
+
+    .current-option-background {
+        background-color: #e7f0fe;
+    }
+
     .for-overflow-dropdown {
         max-height: 500px;
         overflow-y: scroll;

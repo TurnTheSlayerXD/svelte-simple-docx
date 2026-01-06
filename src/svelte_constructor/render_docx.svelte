@@ -3,20 +3,21 @@
 
     const state = $state({ isShow: false });
 
-    const CONTAINER_HEIGHT = 900,
+    const CONTAINER_HEIGHT = document.body.offsetHeight,
         CONTAINER_WIDTH = 700;
 
     const rect = document
         .querySelector("#root > span > div > header")
         .getBoundingClientRect();
     let top = rect.height;
-    let left = document.body.getBoundingClientRect().width - CONTAINER_WIDTH;
+    let right = 0;
 
     let containerHook = $state();
     let docxHook = $state();
     let contentRect = $state();
     let cornerLeft, cornerTop, containerWidth, containerHeight;
 
+    let initialRect;
     $effect(() => {
         if (state.isShow) {
             let { left, top, width, height } =
@@ -25,6 +26,7 @@
             cornerTop = top;
             containerWidth = width;
             containerHeight = height;
+            initialRect = docxHook.getBoundingClientRect();
         }
     });
 
@@ -51,7 +53,8 @@
         return [a, b, c, d, e, f, g, h, i];
     }
 
-    let oldMat = [0.5, 0, 0.5, 0, 0.5, 0.5, 0, 0, 1];
+    let oldMat = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    let kZoom = 1;
     function onWheel(event) {
         event.preventDefault();
         event.stopPropagation();
@@ -63,20 +66,42 @@
         setTimeout(() => {
             tingle = false;
         }, TINGLE_TIMEOUT);
-        if (event.deltaY > 0) {
-            u = containerWidth / 2;
-            v = containerHeight / 2;
-        }
+        // if (event.deltaY > 0) {
+        //     const rect = docxHook.getBoundingClientRect();
+        //     u = rect.left - cornerLeft + rect.width / 2;
+        //     v = rect.top - cornerTop + rect.height / 2;
+        // }
 
         containerHook.style.overflow = "hidden";
-        console.log("contentRect", contentRect);
         const k = 1 + event.deltaY * -K_MOD;
+
+        const rect = docxHook.getBoundingClientRect();
+
+        // u += (rect.x - initialRect.x) / kZoom;
+        // v += (rect.y - initialRect.y) / kZoom;
+        // console.log((rect.x - initialRect.x) / k, (rect.y - initialRect.y) / k);
+
+        // containerHook.scrollTo({ top: 0 });
+
         const modMat = [k, 0, (1 - k) * u, 0, k, (1 - k) * v, 0, 0, 1];
         const newMat = matMul(modMat, oldMat);
-        const kZoom = newMat[0];
+
+        let tx = newMat[2],
+            ty = newMat[5];
+
+        // if (tx < 0 || ty < 0) {
+        //     newMat[2] = 0;
+        //     newMat[5] = 0;
+        //     // return;
+        // }
+
+        kZoom = newMat[0];
+
         if (kZoom > ZOOM_MAX_K || kZoom < ZOOM_MIN_K) {
             return;
         }
+
+        // docxHook.style.transformOrigin = `${u - cornerLeft}px ${v - cornerTop}px`;
         docxHook.style.transform = `matrix(${newMat[0]},${newMat[3]},${newMat[1]},${newMat[4]},${newMat[2]},${newMat[5]})`;
         oldMat = newMat;
         setTimeout(() => {
@@ -91,8 +116,9 @@
     function onMouseMove(event) {
         event.preventDefault();
         event.stopPropagation();
-        u = event.clientX - cornerLeft;
-        v = event.clientY - cornerTop;
+
+        u = event.clientX - cornerLeft + containerHook.scrollLeft;
+        v = event.clientY - cornerTop + containerHook.scrollTop;
 
         // if (mouseMoveTingle) {
         //     return;
@@ -144,7 +170,7 @@
 <div
     class="container"
     style:top={`${top}px`}
-    style:left={`${left}px`}
+    style:right={`${right}px`}
     style:max-width={CONTAINER_WIDTH + "px"}
     style:max-height={CONTAINER_HEIGHT + "px"}
     bind:this={containerHook}
@@ -162,20 +188,14 @@
         Show edited document
     </button>
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="empty"></div>
-    <div style="display: flex; flex-direction: row;">
-        <div class="empty"></div>
-        <div
-            id="docx-render-root"
-            class="docx-container"
-            style:display={state.isShow ? "block" : "none"}
-            bind:this={docxHook}
-            onwheel={onWheel}
-            onmousemovecapture={onMouseMove}
-        ></div>
-        <div class="empty"></div>
-    </div>
-    <div class="empty"></div>
+    <div
+        id="docx-render-root"
+        class="docx-container"
+        style:display={state.isShow ? "block" : "none"}
+        bind:this={docxHook}
+        onwheel={onWheel}
+        onmousemovecapture={onMouseMove}
+    ></div>
 </div>
 
 <style>
@@ -206,7 +226,7 @@
         height: fit-content;
     }
 
-    .empty{
+    .empty {
         width: 0;
         height: 0;
     }

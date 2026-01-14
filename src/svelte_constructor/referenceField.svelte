@@ -1,6 +1,21 @@
 <script module>
-	async function fetchDataFromApi(table, condition, displayByRefColumnName) {
-		const columnsToFetch = `${displayByRefColumnName},sys_id`;
+	const REQUEST_SLEEP_TIME = 1000;
+
+	let lastRequstTime = performance.now();
+
+	async function sleepBeforeApiRequest() {
+		let now = performance.now();
+		while (now - lastRequstTime < REQUEST_SLEEP_TIME) {
+			await sleepAsync(REQUEST_SLEEP_TIME - (now - lastRequstTime));
+			now = performance.now();
+		}
+		lastRequstTime = now;
+	}
+
+	export async function fetchDataFromApi(table, condition, displayByRefColumnName, otherColumnsToFetch = []) {
+		await sleepBeforeApiRequest();
+
+		const columnsToFetch = [displayByRefColumnName, 'sys_id', ...otherColumnsToFetch].join(',');
 		const response = await fetch(
 			`/rest/v1/table/${table}?sysparm_exclude_reference_link=1&sysparm_query=(${condition})` + `&sysparm_fields=${columnsToFetch}`,
 			{
@@ -12,20 +27,48 @@
 		const { data } = await response.json();
 		for (const d of data) {
 			d.display_value = d[displayByRefColumnName];
-			d[displayByRefColumnName] = null;
 		}
 		return data;
 	}
 
+	export async function fetchDisplayValue(table, sys_id) {
+		await sleepBeforeApiRequest();
+		const resp = await fetch(`/v1/field/display-name?table_name=${table}&sys_id=${sys_id}`);
+		const { data } = await resp.json();
+		return data.display_name;
+	}
+
 	async function fetchDisplayByRefColumnName(table) {
-		let condition = `(display_by_ref=1^table_id.name=${table})`;
-		let columnsToFetch = `column_name,title,sys_id`;
+		let now = performance.now();
+		while (now - lastRequstTime < REQUEST_SLEEP_TIME) {
+			await sleepAsync(REQUEST_SLEEP_TIME - (now - lastRequstTime));
+			now = performance.now();
+		}
+		lastRequstTime = now;
+
+		const condition = `(display_by_ref=1^table_id.name=${table})`;
+		const columnsToFetch = `column_name,title,sys_id`;
 		const data = (
 			await fetch(
 				'/rest/v1/table/sys_db_column?sysparm_exclude_reference_link=1' + `&sysparm_query=${condition}` + `&sysparm_fields=${columnsToFetch}`
 			).then((t) => t.json())
 		).data;
 		return data[0].column_name;
+	}
+
+	const displayColumnNameCache = new Map();
+	async function getRecordsLikeDisplayValue(table, likeDisplayValue, staticCondition = '', displayByRefColumnName, otherColumnsToFetch) {
+		if (!displayColumnNameCache.has(table)) {
+			if (!!displayByRefColumnName) {
+				displayColumnNameCache.set(table, displayByRefColumnName);
+			} else {
+				displayColumnNameCache.set(table, await fetchDisplayByRefColumnName(table));
+			}
+		}
+
+		const displayColumnName = displayColumnNameCache.get(table);
+		const condition = concatConditions(staticCondition, `${displayColumnName}LIKE${likeDisplayValue}`);
+		return await fetchDataFromApi(table, condition, displayColumnName, otherColumnsToFetch);
 	}
 
 	function concatConditions(dst, newValue) {
@@ -49,76 +92,152 @@
 		}
 	}
 
-	function sleepAsync(ms = 300) {
-		return new Promise((resolve, reject) => setTimeout(() => resolve(true), ms));
+	function sleepAsync(ms) {
+		return new Promise((resolve) => setTimeout(() => resolve(true), ms));
 	}
 </script>
 
 <script>
-	let { table, condition, nameOfDisplayByRefColumn, popupBoxRef = $bindable() } = $props();
+	let {
+		table,
+		condition: staticCondition,
+		currentValue = $bindable({ display_value: null, sys_id: null }),
+		fieldTitle,
+		popupBoxRef = $bindable(),
+		actionWhenValueSelected = () => console.log('not selected actionWhenValueSelected'),
+		actionWhenValueCleared = () => console.log('not selected actionWhenValueCleared'),
+		otherColumnsToFetch = [],
+		displayByRefColumnName = ''
+	} = $props();
 
 	let searchValue = $state('');
+
 	let referenceFieldHook = $state();
 
-	let currentValue = $state({ display_value: null, sys_id: null });
 	let isFieldFocused = $state(false);
-
-	let isRefButtonVisible = $derived(!isFieldFocused && !!currentValue.sys_id);
 
 	let inputTagHook = $state();
 
-	let isSearchActive = false;
+	let isRefButtonVisible = $derived(!isFieldFocused && !!currentValue.sys_id);
 
-	let displayByRefColumnName = '';
+	let dictionaryWindow = {
+		instance: null,
+		isFindDictionary: false
+	};
+
+	(() => {
+		if (currentValue.sys_id) {
+			fetchDisplayValue(table, currentValue.sys_id).then((display_value) => (currentValue.display_value = display_value));
+		}
+	})();
+	//
 
 	function onClickRowFromPopup(newValue) {
-		currentValue = newValue;
+		currentValue.sys_id = newValue.sys_id;
+		currentValue.display_value = newValue.display_value;
+		actionWhenValueSelected(newValue);
 	}
 
-	let lastRequstTime = performance.now();
-	const REQUEST_SLEEP_TIME = 1000;
+	let lastSearch = { time: performance.now(), value: '' };
+
+	const TIME_DIF = 400;
 	async function onSearchValueChange() {
-		console.log('searchValue', searchValue);
-		if (!searchValue || isSearchActive) {
-			return;
-		}
-		if (!displayByRefColumnName) {
-			displayByRefColumnName = await fetchDisplayByRefColumnName(table);
-		}
+		const savedSearchValue = String(searchValue);
 
-		let now = performance.now();
-		while (now - lastRequstTime < REQUEST_SLEEP_TIME) {
-			await sleepAsync(REQUEST_SLEEP_TIME - (now - lastRequstTime));
-			now = performance.now();
-		}
-		lastRequstTime = performance.now();
+		lastSearch.value = searchValue;
+		lastSearch.time = performance.now();
+		const sinceLastInput = performance.now() - lastSearch.time;
 
-		console.log('REQUEST AT', lastRequstTime);
-		const data = await fetchDataFromApi(table, concatConditions(condition, `${displayByRefColumnName}LIKE${searchValue}`), displayByRefColumnName);
-		popupBoxRef.dataArrRef = data;
-		// console.log('response data', data);
-		if (!popupBoxRef.isPopupOpened) {
-			setOffsetForPopup(referenceFieldHook, popupBoxRef.elementHook);
-			popupBoxRef.isPopupOpened = true;
-			popupBoxRef.onClickRowFromPopup = onClickRowFromPopup;
+		await sleepAsync(TIME_DIF - sinceLastInput);
+
+		if (savedSearchValue === lastSearch.value) {
+			const data = await getRecordsLikeDisplayValue(table, savedSearchValue, staticCondition, displayByRefColumnName, otherColumnsToFetch);
+			popupBoxRef.dataArrRef = data;
+			if (!popupBoxRef.isPopupOpened) {
+				popupBoxRef.onClickRowFromPopup = onClickRowFromPopup;
+				setOffsetForPopup(referenceFieldHook, popupBoxRef.elementHook);
+				popupBoxRef.isPopupOpened = true;
+			}
 		}
 	}
 
 	function onClearCurrentValue() {
 		currentValue.sys_id = null;
 		currentValue.display_value = null;
+		searchValue = '';
+		actionWhenValueSelected(currentValue);
 	}
 
 	function onInputFieldFocus() {
 		isFieldFocused = true;
-		onClearCurrentValue();
-		// setTimeout(() => {
-		// 	console.log('isRefButtonVisible', !!isRefButtonVisible);
-		// 	console.log('!!currentValue.sys_id && !isFieldFocused', !!currentValue.sys_id && !isFieldFocused);
-		// }, 100);
 	}
+
 	function onInputFieldBlur() {
 		isFieldFocused = false;
+	}
+
+	function onClickRefButton(event) {
+		event.preventDefault();
+		event.stopPropagation();
+		console.log('NOT IMPLEMENTED');
+	}
+
+	function onScrollClickRefButton(event) {
+		if (event.button !== 1) {
+			return;
+		}
+		const aHook = document.createElement('a');
+		aHook.href = `/record/${table}/${currentValue.sys_id}`;
+		aHook.target = '_blank';
+		aHook.click();
+	}
+
+	async function onDictionaryWindowMessage(e) {
+		const data = await fetchDataFromApi(table, `sys_id=${e.data.database_value}`, displayByRefColumnName, otherColumnsToFetch);
+		onClickRowFromPopup(data[0]);
+		if (dictionaryWindow.instance) {
+			dictionaryWindow.instance.close();
+		}
+	}
+
+	function onKeydownDictionary(e) {
+		dictionaryWindow.isFindDictionary = true;
+	}
+
+	async function openDictionary() {
+		const width = window.screen.width * 0.7;
+		const height = window.screen.height * 0.7;
+		const top = 0;
+		const left = 0;
+
+		window.addEventListener('message', onDictionaryWindowMessage);
+
+		const url = new URL(`/dictionary/${table}`, window.location.origin);
+		url.searchParams.set('condition', staticCondition);
+		url.searchParams.set('is_fixed', true);
+		url.searchParams.set('type', 'dictionary');
+
+		dictionaryWindow.instance = window.open(url.pathname + url.search, 'Dictionary', `width=${width},height=${height},top=${top},left=${left}`);
+		dictionaryWindow.instance.addEventListener('keydown', onKeydownDictionary);
+
+		if (dictionaryWindow.instance) {
+			const windowOpener = dictionaryWindow.instance.opener;
+			windowOpener.onblur = () => {};
+			dictionaryWindow.instance.onblur = (e) => {
+				if (dictionaryWindow.isFindDictionary) {
+					dictionaryWindow.isFindDictionary = false;
+				} else {
+					dictionaryWindow.instance.close();
+				}
+			};
+			setTimeout(
+				() =>
+					(dictionaryWindow.instance.onbeforeunload = () => {
+						window.removeEventListener('message', onDictionaryWindowMessage);
+					}),
+				300
+			);
+		}
 	}
 </script>
 
@@ -127,13 +246,14 @@
 		<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc">
 			<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B">
 				<span class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY">
-					<span>{nameOfDisplayByRefColumn}</span>
+					<span>{fieldTitle}</span>
 				</span>
 			</div>
 		</div>
 	</div>
 	<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Input___bLmkj" bind:this={referenceFieldHook}>
 		<div class="src-components-dynamicForms-view-field-reference-___styles-module__ReferenceWrap___eRJAI">
+			<!-- svelte-ignore a11y_consider_explicit_label -->
 			<div class="  src-components-dynamicForms-view-field-reference-___styles-module__Reference____LE_r">
 				<div class="src-components-dynamicForms-view-field-reference-___styles-module__input___ugSOq">
 					<div class="src-components-dynamicForms-view-field-reference-___styles-module__FieldWrap___vC5cf">
@@ -146,7 +266,6 @@
 												inputTagHook?.focus();
 											}
 										}}
-										tabindex="4"
 										type="text"
 										bind:value={searchValue}
 										bind:this={inputTagHook}
@@ -159,6 +278,8 @@
 							<div
 								class="src-components-dynamicForms-view-field-reference-___styles-module__Field___usWmV src-components-dynamicForms-view-field-reference-___styles-module__Hidden___ngVHd"
 							>
+								<!-- svelte-ignore a11y_consider_explicit_label -->
+								<!-- svelte-ignore a11y_positive_tabindex -->
 								<button type="button" class="src-components-dynamicForms-view-field-reference-___styles-module__FieldOverlay___flsnR" tabindex="4">
 								</button>
 							</div>
@@ -169,17 +290,16 @@
 									title=""
 									type="button"
 									class="src-components-dynamicForms-view-field-reference-___styles-module__FieldOverlay___flsnR"
-									tabindex="3"
 								>
 								</button>
 								<div class="src-components-dynamicForms-view-field-reference-___styles-module__BadgeWrap___HT7O6">
 									<button
 										class="src-components-button-___styles-module__Icon___gxSRu src-components-dynamicForms-view-field-reference-___styles-module__Badge___In6nV"
 										type="button"
-										tabindex="3"
-										data-disabled="false"
-										data-test="icon-test-button">{currentValue.display_value}</button
-									>
+										onclick={onClickRefButton}
+										onmousedown={onScrollClickRefButton}
+										>{currentValue.display_value}
+									</button>
 								</div>
 								<button
 									title=""
@@ -213,10 +333,10 @@
 						{/if}
 					</div>
 				</div>
+				<!-- svelte-ignore a11y_consider_explicit_label -->
 				<button
 					class="src-components-button-___styles-module__IconBorder___GkTQy src-components-dynamicForms-view-field-reference-___styles-module__button___LsGpV"
 					type="button"
-					tabindex="4"
 					><span class=""
 						><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<path
@@ -225,10 +345,13 @@
 							></path>
 						</svg>
 					</span></button
-				><button
+				>
+
+				<!-- svelte-ignore a11y_consider_explicit_label -->
+				<button
 					class="src-components-button-___styles-module__IconBorder___GkTQy src-components-dynamicForms-view-field-reference-___styles-module__button___LsGpV"
 					type="button"
-					tabindex="4"
+					onclick={openDictionary}
 					><span class=""
 						><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<path

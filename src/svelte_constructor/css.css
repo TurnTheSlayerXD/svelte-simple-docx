@@ -499,7 +499,7 @@
     padding: 100px;
 
     display: grid;
-    grid-template-columns: 2fr auto;
+    grid-template-columns: 3fr 2fr;
 }
 
 .display-none {

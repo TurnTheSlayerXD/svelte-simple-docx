@@ -16,6 +16,7 @@ if (input.action === 'createAttachmentAndReturnUrl') {
     const base64 = attachmentService.base64Encode(binary);
     const attachmentId = attachmentService.writeBase64(docId, docxFileName, base64, mimeType);
     data.attachmentUrl = attachmentService.getAttachmentUrlById(attachmentId);
+    
 }
 
 else if (input.action === 'fetchDocxScript') {
@@ -52,6 +53,7 @@ else if (input.action === "createDocxTemplate") {
         return;
     }
     ss.addSuccessMessage(`Succesfully saved template! into <a href="/record/itam_task_docx_template/${docxTemplateSysId}">Ref to template</a>`);
+    data.docxTemplateSysId = docxTemplateSysId;
 }
 
 else if (input.action === 'getExistingDocxTemplateConfigById') {
@@ -73,6 +75,7 @@ else if (input.action === 'getExistingDocxTemplateConfigById') {
     data.docxTemplateRecord = JSON.stringify({
         sys_id: docxTemplateSr.sys_id,
         table_id: docxTemplateSr.getValue('task_table_id'),
+        table_name_display_value: docxTemplateSr.getDisplayValue('task_table_id'),
         template_data: JSON.parse(docxTemplateSr.template_data),
     });
     data.base64 = new SimpleAttachment().readBase64(attachmentSr.sys_id);
@@ -107,6 +110,49 @@ else if (input.action === 'updateExistingDocxTemplateRecord') {
     ss.addSuccessMessage(`Succesfully updated template! into <a href="/record/itam_task_docx_template/${docxTemplateSysId}">Ref to template</a>`);
 }
 
+else if (input.action === 'fetchParentTableIds') {
+    let { tableSysId } = input;
+    data.parentTableIds = getParentTableIds(tableSysId);
+}
+
+else if (input.action === 'fetchRelatedListSysIds') {
+    let { tableSysId } = input;
+
+    const parentTableIds = getParentTableIds(tableSysId);
+    parentTableIds.unshift(tableSysId);
+
+    const relatedListArr = [];
+    const relatedListSr = new SimpleRecord('sys_ui_related_list');
+    relatedListSr.addQuery('table_id', 'in', parentTableIds);
+    relatedListSr.selectAttributes(['table_id']);
+    relatedListSr.query();
+    while (relatedListSr.next()) {
+        relatedListArr.push({ table_id: relatedListSr.getValue('table_id'), sys_id: relatedListSr.sys_id });
+    }
+
+    data.relatedLists = relatedListArr;
+}
+
+
+function getParentTableIds(tableSysId) {
+    const parentTableIds = [];
+    while (tableSysId) {
+        const tableSr = new SimpleRecord('sys_db_table');
+        tableSr.addQuery('sys_id', tableSysId);
+        tableSr.addQuery('parent_id', 'isnotempty');
+        tableSr.selectAttributes(['sys_id', 'parent_id']);
+        tableSr.setLimit(1);
+        tableSr.query();
+        if (tableSr.next()) {
+            parentTableIds.push(tableSr.getValue('parent_id'));
+            tableSysId = tableSr.getValue('parent_id');
+        }
+        else {
+            tableSysId = null;
+        }
+    }
+    return parentTableIds;
+}
 
 
 function fetchItamTaskTypes() {
@@ -209,3 +255,5 @@ function fetchItamTaskTypes() {
 
     return tableTypes;
 }
+
+

@@ -90,6 +90,8 @@
 			popupElement.style.top = baseElement.offsetTop + baseElement.offsetHeight + 'px';
 			popupElement.style.bottom = 'unset';
 		}
+		console.log('baseElement', baseElement);
+		console.log('popupElement', popupElement);
 	}
 
 	function sleepAsync(ms) {
@@ -107,7 +109,7 @@
 		actionWhenValueSelected = () => console.log('not selected actionWhenValueSelected'),
 		actionWhenValueCleared = () => console.log('not selected actionWhenValueCleared'),
 		otherColumnsToFetch = [],
-		displayByRefColumnName = ''
+		displayByRefColumnName = '',
 	} = $props();
 
 	let searchValue = $state('');
@@ -182,7 +184,7 @@
 		console.log('NOT IMPLEMENTED');
 	}
 
-	function onScrollClickRefButton(event) {
+	function onMiddleClickRefButton(event) {
 		if (event.button !== 1) {
 			return;
 		}
@@ -241,7 +243,7 @@
 	}
 </script>
 
-<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L">
+<div style="max-width: 400px;" class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L">
 	<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA">
 		<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc">
 			<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B">
@@ -297,7 +299,7 @@
 										class="src-components-button-___styles-module__Icon___gxSRu src-components-dynamicForms-view-field-reference-___styles-module__Badge___In6nV"
 										type="button"
 										onclick={onClickRefButton}
-										onmousedown={onScrollClickRefButton}
+										onmousedown={onMiddleClickRefButton}
 										>{currentValue.display_value}
 									</button>
 								</div>

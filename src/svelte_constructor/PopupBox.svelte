@@ -24,8 +24,8 @@
 	style:display={popupBoxRef.isPopupOpened ? 'initial' : 'none'}
 >
 	{#each popupBoxRef.dataArrRef as row}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="src-components-customselect-___styles-module__menu___XQSV5"
 			onclick={() => {

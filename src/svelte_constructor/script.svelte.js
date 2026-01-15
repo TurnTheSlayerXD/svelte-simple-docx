@@ -3,7 +3,7 @@
 import { findPlacesInDocxToReplace } from './docx_replacement_detector.svelte';
 
 import { doDocxRendering } from './render_docx.svelte'
-import { setColorForPreviewedDocxField } from './preview_builder.svelte';
+import { setPreviewedDocxField } from './preview_builder.svelte';
 
 export const docxTemplateState = $state({
 
@@ -351,7 +351,7 @@ export async function loadExistingTemplate({ sys_id: template_sys_id }) {
     docxTemplateState.renderRootId = await doDocxRendering(new Blob([currentDocxArrayBuffer]));
 
     for (const field of docxTemplateState.foundFields) {
-        setColorForPreviewedDocxField(docxTemplateState.renderRootId, field);
+        setPreviewedDocxField(docxTemplateState.renderRootId, field);
     }
 }
 

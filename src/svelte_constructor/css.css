@@ -496,10 +496,9 @@
 .outer-container {
     width: 100%;
     height: 100%;
-    padding: 100px;
-
-    display: grid;
-    grid-template-columns: 3fr 2fr;
+    /* padding: 100px; */
+    /* display: grid; */
+    /* grid-template-columns: 3fr 2fr; */
 }
 
 .display-none {

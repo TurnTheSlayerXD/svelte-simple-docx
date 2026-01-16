@@ -19,8 +19,10 @@
 
 	export async function doDocxRendering(blob) {
 		const docxRenderRoot = document.getElementById('docx-render-root');
+		while (docxRenderRoot.lastChild) {
+			docxRenderRoot.removeChild(docxRenderRoot.lastChild);
+		}
 		const rsp = await docxRenderLib.renderAsync(blob, docxRenderRoot);
-
 		return 'docx-render-root';
 	}
 </script>
@@ -28,7 +30,7 @@
 <script>
 	const state = $state({ isShow: false });
 
-	const { docxTemplateState = $bindable() } = $props();
+	const { docxTemplateState = $bindable() , isVisibleRef } = $props();
 
 	const CONTAINER_HEIGHT = document.body.offsetHeight,
 		CONTAINER_WIDTH = 700;
@@ -136,7 +138,6 @@
 		event.stopPropagation();
 		isMouseClicked = false;
 	}
-
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->

@@ -13,6 +13,7 @@ export const docxTemplateState = $state({
     _nullMappedTable: () => ({ sys_id: null, sys_table_name: null, display_value: null }),
     _nullMappedUiList: () => ({ sys_id: null, table_id: null, sys_table_name: null, display_value: null }),
 
+    renderRootId: null,
     dbMappedTaskTable: { sys_id: null, sys_table_name: null, display_value: null },
 
     conditionStringForTaskTable: 'parent_id.name=itam_tasks',
@@ -64,6 +65,7 @@ export const docxTemplateState = $state({
         this.foundFields = [];
         this.foundTables = [];
         this.dbMappedTaskTable = this._nullMappedTable();
+        this.renderRootId = null;
     }
 
 });
@@ -71,6 +73,10 @@ export const docxTemplateState = $state({
 export const templateRecordState = $state({
     sys_id: null,
     display_value: null,
+
+    reset() {
+        this.sys_id = null;
+    }
 });
 
 serverUpdate("fetchDocxScript").then(() => {
@@ -115,17 +121,18 @@ export async function processFile({ buttonsState, fileBlob, fileName, docxFiles 
                 dbMappedColumn: { ...docxTemplateState._nullMappedColumn() },
             })),
     }));
-
     docxTemplateState.isVisible = true;
-
     docxTemplateState.renderRootId = await doDocxRendering(outputBlob);
+    
+    for (const field of docxTemplateState.foundFields) {
+        setPreviewedDocxField(docxTemplateState.renderRootId, field);
+    }
 
     return docxUrl;
 }
 
 
-export async function generateTemplate(buttonsState, docxFiles) {
-    buttonsState.isUploadPreproccessedDisabled = true;
+export async function generateTemplate(docxFiles) {
     console.log("generateTemplate");
     s_widget.setFieldValue(
         "selectTaskField",
@@ -193,8 +200,6 @@ export async function generateTemplate(buttonsState, docxFiles) {
         s_widget.setFieldValue('docxTemplateSysId', '');
 
         templateRecordState.sys_id = docxTemplateSysId;
-
-        buttonsState.isUploadPreproccessedDisabled = false;
     }
 }
 
@@ -274,16 +279,9 @@ export async function fetchRelatedListsConditionByTableSysId(tableSysId) {
 export async function loadExistingTemplate({ sys_id: template_sys_id }) {
 
     if (!template_sys_id) {
-        templateRecordState.previous_sys_id = template_sys_id;
         docxTemplateState.clearAll();
         return;
     }
-    if (template_sys_id === templateRecordState.previous_sys_id) {
-        console.log('ignoring loadExistingTemplate');
-        return;
-    }
-    templateRecordState.previous_sys_id = template_sys_id;
-
 
     s_widget.setFieldValue('docxTemplateSysId', template_sys_id);
     await serverUpdate('getExistingDocxTemplateConfigById');

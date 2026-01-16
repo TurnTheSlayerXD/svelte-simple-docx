@@ -12,7 +12,12 @@
 
 	import PopupBox from './PopupBox.svelte';
 	import FileZone from './fileZone.svelte';
-	import { templateRecordState, fetchColumnRecordsConditionByTableSysId, fetchRelatedListsConditionByTableSysId } from './script.svelte';
+	import {
+		templateRecordState,
+		fetchColumnRecordsConditionByTableSysId,
+		fetchRelatedListsConditionByTableSysId,
+		generateTemplate
+	} from './script.svelte';
 
 	import { setPreviewedDocxField } from './preview_builder.svelte';
 
@@ -87,7 +92,7 @@
 
 	let sidebarPopupBoxRef = $state({});
 
-	let isDocxTemplateSelected = $derived(!!templateRecordState.sys_id);
+	let isDocxTemplateSelected = $derived(!!templateRecordState.sys_id || !!docxFiles.templateDocx);
 	let isSidebarVisible = $derived(isDocxTemplateSelected);
 
 	const outerContainerHook = document.getElementById('outer-container');
@@ -96,6 +101,11 @@
 
 	outerContainerHook.style.height = `calc(100vh - ${simpleHeaderHeight}px)`;
 	let sidebarHook = $state();
+
+	let docxFiles = $state({
+		sourceDocx: null,
+		templateDocx: null
+	});
 
 	let resizeHelperHook = $state();
 
@@ -142,11 +152,13 @@
 />
 
 {#if !isDocxTemplateSelected}
-	<FileZone></FileZone>
+	<div style="margin-left: 100px; margin-top: 100px;">
+		<FileZone {docxFiles}></FileZone>
+	</div>
 {/if}
 
 {#if !isDocxTemplateSelected}
-	<div style="margin-left: 50px;">
+	<div style="margin-left: 100px; margin-top: 100px;">
 		<ReferenceField
 			condition=""
 			table="itam_task_docx_template"
@@ -159,9 +171,9 @@
 	</div>
 {/if}
 
-{#if isDocxTemplateSelected}
+<div style:display={isDocxTemplateSelected ? 'unset' : 'none'}>
 	<RenderDocx {docxTemplateState}></RenderDocx>
-{/if}
+</div>
 
 <PopupBox {popupBoxRef}></PopupBox>
 
@@ -244,12 +256,35 @@
 					popupBoxRef={sidebarPopupBoxRef}
 					fieldTitle="ITAM Task table"
 				></ReferenceField>
+
+				{#if !templateRecordState.sys_id}
+					<button class="src-components-button-___styles-module__Default___Lp0Il" onclick={() => generateTemplate(docxFiles)}>
+						Generate template
+					</button>
+				{:else}
+					<button class="src-components-button-___styles-module__Default___Lp0Il process-file__button" onclick={() => generateTemplate()}>
+						Update template
+					</button>
+				{/if}
+				<button
+					class="src-components-button-___styles-module__Default___Lp0Il"
+					onclick={() => {
+						docxFiles.sourceDocx = null;
+						docxFiles.templateDocx = null;
+						docxTemplateState.renderRootId = null;
+						docxTemplateState.clearAll();
+						docxTemplateState.isVisible = false;
+						templateRecordState.reset();
+					}}
+				>
+					Restart
+				</button>
 			</div>
 
 			{#if docxTemplateState.dbMappedTaskTable.sys_id}
 				<div class="sidebar-body">
 					{#each docxTemplateState.foundTables as relatedTable}
-						<div style="display: flex; flex-direction: column; width: 900px; gap: 30px;">
+						<div class="related-table-title">
 							<div style="flex: 1 1 auto;">
 								<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L" data-test="field-Purchase documentation">
 									<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA">
@@ -258,7 +293,7 @@
 												<span class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
 													><span
 														>Detected table with following columns:
-														{`\n\r\t\t${relatedTable.formedTitleStr}`}
+														{relatedTable.formedTitleStr}
 													</span></span
 												>
 											</div>
@@ -279,11 +314,11 @@
 							popupBoxRef={sidebarPopupBoxRef}
 						></ReferenceField>
 
-						<div style="margin-left: 100px;">
+						<div style="margin-left: 30px;">
 							{#if relatedTable.dbMappedUiList.sys_id}
 								{#each relatedTable.foundColumns as column}
-									<div style="display: flex; flex-direction: row; width: 900px; gap: 50px; align-items: center;">
-										<div style="flex: 1 1 auto; max-width: 250px;">
+									<div style="display: flex; flex-direction: row; width: 900px; gap: 30px; align-items: center;">
+										<div style="flex: 1 1 auto; max-width: 150px;">
 											<div
 												class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
 												data-test="field-Purchase documentation"
@@ -305,39 +340,48 @@
 											</div>
 										</div>
 
-										{#if column.dbMappedColumn.isScripted}
-											<ReferenceField
-												table="itam_script_table_mapping"
-												condition={`table_id=${relatedTable.dbMappedUiList.table_id}`}
-												displayByRefColumnName="name"
-												fieldTitle="Script mapping"
-												currentValue={column.dbMappedColumn}
-												otherColumnsToFetch={[]}
-												popupBoxRef={sidebarPopupBoxRef}
-												isFillWidth={false}
-												actionWhenValueSelected={(newValue) => actionWhenRelatedListColumnSelected(column, newValue)}
-											></ReferenceField>
-										{:else if !column.dbMappedColumn.isEnumerated}
-											<ReferenceField
-												table="sys_db_column"
-												condition={relatedTable.conditionStringForColumns}
-												displayByRefColumnName="title"
-												fieldTitle="Related list column"
-												currentValue={column.dbMappedColumn}
-												otherColumnsToFetch={['column_name']}
-												actionWhenValueSelected={(newValue) => actionWhenRelatedListColumnSelected(column, newValue)}
-												popupBoxRef={sidebarPopupBoxRef}
-												isFillWidth={false}
-											></ReferenceField>
-										{/if}
+										<div style="max-width: 200px; width: -webkit-fill-available;">
+											{#if column.dbMappedColumn.isScripted}
+												<ReferenceField
+													table="itam_script_table_mapping"
+													condition={`table_id=${relatedTable.dbMappedUiList.table_id}`}
+													displayByRefColumnName="name"
+													fieldTitle="Script mapping"
+													currentValue={column.dbMappedColumn}
+													otherColumnsToFetch={[]}
+													popupBoxRef={sidebarPopupBoxRef}
+													isFillWidth={false}
+													actionWhenValueSelected={(newValue) => actionWhenRelatedListColumnSelected(column, newValue)}
+												></ReferenceField>
+											{:else if !column.dbMappedColumn.isEnumerated}
+												<ReferenceField
+													table="sys_db_column"
+													condition={relatedTable.conditionStringForColumns}
+													displayByRefColumnName="title"
+													fieldTitle="Related list column"
+													currentValue={column.dbMappedColumn}
+													otherColumnsToFetch={['column_name']}
+													actionWhenValueSelected={(newValue) => actionWhenRelatedListColumnSelected(column, newValue)}
+													popupBoxRef={sidebarPopupBoxRef}
+													isFillWidth={false}
+												></ReferenceField>
+											{/if}
+										</div>
 
-										<Checkbox
-											title="Enumeration column"
-											checked={column.dbMappedColumn.isEnumerated}
-											onClickCheckbox={() => onEnumerationOptionClick(column)}
-										></Checkbox>
-										<Checkbox title="Scripted option" checked={column.dbMappedColumn.isScripted} onClickCheckbox={() => onSciptedOptionClick(column)}
-										></Checkbox>
+										<div style="max-width: 150px; width: -webkit-fill-available;">
+											<Checkbox
+												title="Enumeration column"
+												checked={column.dbMappedColumn.isEnumerated}
+												onClickCheckbox={() => onEnumerationOptionClick(column)}
+											></Checkbox>
+										</div>
+										<div style="max-width: 150px; width: -webkit-fill-available;">
+											<Checkbox
+												title="Scripted option"
+												checked={column.dbMappedColumn.isScripted}
+												onClickCheckbox={() => onSciptedOptionClick(column)}
+											></Checkbox>
+										</div>
 									</div>
 								{/each}
 							{/if}
@@ -348,7 +392,7 @@
 
 					{#each docxTemplateState.foundFields as field}
 						<div class="docx-field-row" bind:this={field.htmlHook} style:background={field.isFocused ? '#e5f4ff' : 'unset'}>
-							<div style="">
+							<!-- <div style="">
 								<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L" data-test="field-Purchase documentation">
 									<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA">
 										<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc">
@@ -376,36 +420,39 @@
 									</div>
 									<MyInput binding={field.sourceStr} readonly={true}></MyInput>
 								</div>
+							</div> -->
+
+							<div style="max-width: 250px; width: -webkit-fill-available;">
+								{#if field.dbMappedColumn.isScripted}
+									<ReferenceField
+										table="itam_script_table_mapping"
+										condition={`table_id=${docxTemplateState.dbMappedTaskTable.sys_id}`}
+										displayByRefColumnName="name"
+										fieldTitle="Script mapping"
+										currentValue={field.dbMappedColumn}
+										otherColumnsToFetch={[]}
+										popupBoxRef={sidebarPopupBoxRef}
+										isFillWidth={false}
+										actionWhenValueSelected={(newValue) => actionWhenTaskFieldSelected(field, newValue)}
+									></ReferenceField>
+								{:else}
+									<ReferenceField
+										fieldTitle="Task column to map"
+										table="sys_db_column"
+										condition={docxTemplateState.conditionStringForFields}
+										currentValue={field.dbMappedColumn}
+										displayByRefColumnName="title"
+										popupBoxRef={sidebarPopupBoxRef}
+										otherColumnsToFetch={['column_name']}
+										actionWhenValueSelected={(newValue) => actionWhenTaskFieldSelected(field, newValue)}
+										isFillWidth={false}
+									></ReferenceField>
+								{/if}
 							</div>
-
-							{#if field.dbMappedColumn.isScripted}
-								<ReferenceField
-									table="itam_script_table_mapping"
-									condition={`table_id=${docxTemplateState.dbMappedTaskTable.sys_id}`}
-									displayByRefColumnName="name"
-									fieldTitle="Script mapping"
-									currentValue={field.dbMappedColumn}
-									otherColumnsToFetch={[]}
-									popupBoxRef={sidebarPopupBoxRef}
-									isFillWidth={false}
-									actionWhenValueSelected={(newValue) => actionWhenTaskFieldSelected(field, newValue)}
-								></ReferenceField>
-							{:else}
-								<ReferenceField
-									fieldTitle="Task column to map"
-									table="sys_db_column"
-									condition={docxTemplateState.conditionStringForFields}
-									currentValue={field.dbMappedColumn}
-									displayByRefColumnName="title"
-									popupBoxRef={sidebarPopupBoxRef}
-									otherColumnsToFetch={['column_name']}
-									actionWhenValueSelected={(newValue) => actionWhenTaskFieldSelected(field, newValue)}
-									isFillWidth={false}
-								></ReferenceField>
-							{/if}
-
-							<Checkbox title="Scripted option" onClickCheckbox={() => onSciptedOptionClick(field)} checked={field.dbMappedColumn.isScripted}
-							></Checkbox>
+							<div style="max-width: 200px; width: -webkit-fill-available;">
+								<Checkbox title="Scripted option" onClickCheckbox={() => onSciptedOptionClick(field)} checked={field.dbMappedColumn.isScripted}
+								></Checkbox>
+							</div>
 						</div>
 					{/each}
 				</div>
@@ -427,12 +474,14 @@
 		top: 0;
 		right: 0;
 		width: 600px;
+		max-width: 900px;
+		min-width: 550px;
 
 		box-shadow:
 			0px 4px 6px rgba(0, 0, 0, 0.1),
 			0px 1px 4px rgba(0, 0, 0, 0.16);
 
-		background-color: azure;
+		background-color: white;
 		border: 1px solid lightblue;
 		z-index: 1;
 
@@ -481,6 +530,11 @@
 		flex-direction: row;
 		gap: 50px;
 		transition: background-color 300ms ease-in;
+
+		margin-left: -35px;
+		padding-left: 35px;
+		margin-right: -35px;
+		padding-right: 35px;
 	}
 
 	.docx-field-row:hover {
@@ -489,5 +543,13 @@
 
 	.toggle-docx-field-row {
 		background: #e5f4ff;
+	}
+
+	.related-table-title {
+		display: flex;
+		flex-direction: column;
+		max-width: 700px;
+		gap: 30px;
+		text-overflow: ellipsis;
 	}
 </style>

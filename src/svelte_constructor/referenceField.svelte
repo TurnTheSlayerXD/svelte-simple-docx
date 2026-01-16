@@ -90,8 +90,8 @@
 			popupElement.style.top = baseElement.offsetTop + baseElement.offsetHeight + 'px';
 			popupElement.style.bottom = 'unset';
 		}
-		console.log('baseElement', baseElement);
-		console.log('popupElement', popupElement);
+		// console.log('baseElement', baseElement);
+		// console.log('popupElement', popupElement);
 	}
 
 	function sleepAsync(ms) {

@@ -25,17 +25,14 @@
 	}
 
 	function uploadContainerDragLeave(ev) {
-		console.log('uploadContainerDragLeave');
 		ev.preventDefault();
 		ev.stopImmediatePropagation();
 		containerState.isDragging = false;
 	}
 
 	function filezoneDrop(ev) {
-		console.log('filezoneDrop');
 		ev.preventDefault();
 		ev.stopImmediatePropagation();
-		console.log(ev);
 		containerState.isDragging = false;
 	}
 

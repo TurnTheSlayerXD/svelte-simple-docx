@@ -1,3 +1,6 @@
+import { UNREACHABLE } from "./helper.svelte";
+
+
 export function getPreviewObjectFromFieldTemplate(renderRootId, fieldTemplate) {
     const renderRoot = document.getElementById(renderRootId);
     const expression = `//*[contains(text(),'${fieldTemplate}')]`;
@@ -8,12 +11,6 @@ export function getPreviewObjectFromFieldTemplate(renderRootId, fieldTemplate) {
     }
     return targetNode;
 }
-
-export function getPreviewObjectFromTableTemplate(renderRoot, tableOrderIndex, templateColumn) {
-
-    return null;
-}
-
 
 export function setPreviewedDocxField(renderRootId, field) {
     let wasAlreadyReplaced = true;
@@ -71,12 +68,22 @@ export function setPreviewedDocxField(renderRootId, field) {
             />
         `);
     }
-
-
     // const { dbMappedColumn } = field;
     // if (dbMappedColumn.sys_id || dbMappedColumn.isEnumerated) {
     //     targetNode.style.backgroundColor = 'green';
     // } else {
     //     targetNode.style.backgroundColor = 'yellow';
     // }
+}
+
+
+export function* iterTableElements(renderRootId) {
+    const rootElem = document.getElementById(renderRootId);
+    if (!rootElem) {
+        UNREACHABLE();
+    }
+    const tableElements = rootElem.querySelectorAll('table');
+    for (const elem of tableElements) {
+        yield elem;
+    }
 }

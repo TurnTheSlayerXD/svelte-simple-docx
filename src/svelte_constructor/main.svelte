@@ -112,6 +112,14 @@
 	let sidebarScrollHook = $state();
 
 	window.onPreviewInputFocus = (fieldTemplateStr) => {
+		docxTemplateState.isVisible = true;
+		for (const field of docxTemplateState.foundFields) {
+			field.isFocused = false;
+		}
+		for (const table of docxTemplateState.foundTables) {
+			table.isFocused = false;
+		}
+
 		const fieldRef = docxTemplateState.foundFields.find((field) => field.templateStr === fieldTemplateStr);
 		if (!fieldRef) {
 			throw new Error('const fieldRef = docxTemplateState.foundFields.find(field => field.templateStr === fieldTemplateStr);');
@@ -121,11 +129,27 @@
 		sidebarScrollHook.scrollBy(0, htmlHook.getBoundingClientRect().top - document.body.offsetHeight / 2);
 
 		fieldRef.isFocused = true;
-		setTimeout(() => {
-			fieldRef.isFocused = false;
-		}, 1000);
 	};
 
+	window.onPreviewTableFocus = (tableOrderIndex, eventArg) => {
+		const foundFieldsPreview = docxTemplateState.foundFields.map((field) => field.previewField);
+		if (foundFieldsPreview.some((t) => t.contains(eventArg.target))) {
+			console.log('ignored table focus');
+			return;
+		}
+
+		docxTemplateState.isVisible = true;
+		for (const field of docxTemplateState.foundFields) {
+			field.isFocused = false;
+		}
+		for (const table of docxTemplateState.foundTables) {
+			table.isFocused = false;
+		}
+		const focusedTable = docxTemplateState.foundTables[tableOrderIndex];
+
+		focusedTable.isFocused = true;
+		sidebarScrollHook.scrollBy(0, focusedTable.htmlHook.getBoundingClientRect().top - document.body.offsetHeight / 2);
+	};
 	// window.onPreviewButtonClick = (fieldTemplateStr) => {
 	// 	const fieldRef = docxTemplateState.foundFields.find((field) => field.templateStr === fieldTemplateStr);
 	// 	if (!fieldRef) {
@@ -303,88 +327,90 @@
 							</div>
 						</div>
 
-						<ReferenceField
-							table="sys_ui_related_list_element"
-							currentValue={relatedTable.dbMappedUiList}
-							actionWhenValueSelected={(newValue) => actionWhenRelatedListSelected(relatedTable, newValue)}
-							displayByRefColumnName="title"
-							otherColumnsToFetch={['related_table_id', 'related_list_script_id.query_from']}
-							condition={docxTemplateState.conditionStringForRelatedLists}
-							fieldTitle="Related table"
-							popupBoxRef={sidebarPopupBoxRef}
-						></ReferenceField>
+						<div style:background={relatedTable.isFocused ? '#e5f4ff' : 'unset'} bind:this={relatedTable.htmlHook}>
+							<ReferenceField
+								table="sys_ui_related_list_element"
+								currentValue={relatedTable.dbMappedUiList}
+								actionWhenValueSelected={(newValue) => actionWhenRelatedListSelected(relatedTable, newValue)}
+								displayByRefColumnName="title"
+								otherColumnsToFetch={['related_table_id', 'related_list_script_id.query_from']}
+								condition={docxTemplateState.conditionStringForRelatedLists}
+								fieldTitle="Related table"
+								popupBoxRef={sidebarPopupBoxRef}
+							></ReferenceField>
 
-						<div style="margin-left: 30px;">
-							{#if relatedTable.dbMappedUiList.sys_id}
-								{#each relatedTable.foundColumns as column}
-									<div style="display: flex; flex-direction: row; width: 900px; gap: 30px; align-items: center;">
-										<div style="flex: 1 1 auto; max-width: 150px;">
-											<div
-												class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
-												data-test="field-Purchase documentation"
-											>
-												<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA">
-													<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc">
-														<div
-															class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
-															data-test="document_id-label"
-														>
-															<span class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-																><span>Template field</span></span
+							<div style="margin-left: 30px;">
+								{#if relatedTable.dbMappedUiList.sys_id}
+									{#each relatedTable.foundColumns as column}
+										<div style="display: flex; flex-direction: row; width: 900px; gap: 30px; align-items: center;">
+											<div style="flex: 1 1 auto; max-width: 150px;">
+												<div
+													class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L"
+													data-test="field-Purchase documentation"
+												>
+													<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA">
+														<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc">
+															<div
+																class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B"
+																data-test="document_id-label"
 															>
+																<span class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
+																	><span>Template field</span></span
+																>
+															</div>
 														</div>
 													</div>
-												</div>
 
-												<MyInput binding={column.sourceStr} readonly={true}></MyInput>
+													<MyInput binding={column.sourceStr} readonly={true}></MyInput>
+												</div>
+											</div>
+
+											<div style="max-width: 200px; width: -webkit-fill-available;">
+												{#if column.dbMappedColumn.isScripted}
+													<ReferenceField
+														table="itam_script_table_mapping"
+														condition={`table_id=${relatedTable.dbMappedUiList.table_id}`}
+														displayByRefColumnName="name"
+														fieldTitle="Script mapping"
+														currentValue={column.dbMappedColumn}
+														otherColumnsToFetch={[]}
+														popupBoxRef={sidebarPopupBoxRef}
+														isFillWidth={false}
+														actionWhenValueSelected={(newValue) => actionWhenRelatedListColumnSelected(column, newValue)}
+													></ReferenceField>
+												{:else if !column.dbMappedColumn.isEnumerated}
+													<ReferenceField
+														table="sys_db_column"
+														condition={relatedTable.conditionStringForColumns}
+														displayByRefColumnName="title"
+														fieldTitle="Related list column"
+														currentValue={column.dbMappedColumn}
+														otherColumnsToFetch={['column_name']}
+														actionWhenValueSelected={(newValue) => actionWhenRelatedListColumnSelected(column, newValue)}
+														popupBoxRef={sidebarPopupBoxRef}
+														isFillWidth={false}
+													></ReferenceField>
+												{/if}
+											</div>
+
+											<div style="max-width: 150px; width: -webkit-fill-available;">
+												<Checkbox
+													title="Enumeration column"
+													checked={column.dbMappedColumn.isEnumerated}
+													onClickCheckbox={() => onEnumerationOptionClick(column)}
+												></Checkbox>
+											</div>
+											<div style="max-width: 150px; width: -webkit-fill-available;">
+												<Checkbox
+													title="Scripted option"
+													checked={column.dbMappedColumn.isScripted}
+													onClickCheckbox={() => onSciptedOptionClick(column)}
+												></Checkbox>
 											</div>
 										</div>
-
-										<div style="max-width: 200px; width: -webkit-fill-available;">
-											{#if column.dbMappedColumn.isScripted}
-												<ReferenceField
-													table="itam_script_table_mapping"
-													condition={`table_id=${relatedTable.dbMappedUiList.table_id}`}
-													displayByRefColumnName="name"
-													fieldTitle="Script mapping"
-													currentValue={column.dbMappedColumn}
-													otherColumnsToFetch={[]}
-													popupBoxRef={sidebarPopupBoxRef}
-													isFillWidth={false}
-													actionWhenValueSelected={(newValue) => actionWhenRelatedListColumnSelected(column, newValue)}
-												></ReferenceField>
-											{:else if !column.dbMappedColumn.isEnumerated}
-												<ReferenceField
-													table="sys_db_column"
-													condition={relatedTable.conditionStringForColumns}
-													displayByRefColumnName="title"
-													fieldTitle="Related list column"
-													currentValue={column.dbMappedColumn}
-													otherColumnsToFetch={['column_name']}
-													actionWhenValueSelected={(newValue) => actionWhenRelatedListColumnSelected(column, newValue)}
-													popupBoxRef={sidebarPopupBoxRef}
-													isFillWidth={false}
-												></ReferenceField>
-											{/if}
-										</div>
-
-										<div style="max-width: 150px; width: -webkit-fill-available;">
-											<Checkbox
-												title="Enumeration column"
-												checked={column.dbMappedColumn.isEnumerated}
-												onClickCheckbox={() => onEnumerationOptionClick(column)}
-											></Checkbox>
-										</div>
-										<div style="max-width: 150px; width: -webkit-fill-available;">
-											<Checkbox
-												title="Scripted option"
-												checked={column.dbMappedColumn.isScripted}
-												onClickCheckbox={() => onSciptedOptionClick(column)}
-											></Checkbox>
-										</div>
-									</div>
-								{/each}
-							{/if}
+									{/each}
+								{/if}
+							</div>
 						</div>
 
 						<div class="black-bar"></div>

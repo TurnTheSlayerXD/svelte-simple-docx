@@ -3,7 +3,9 @@
 import { findPlacesInDocxToReplace } from './docx_replacement_detector.svelte';
 
 import { doDocxRendering } from './render_docx.svelte'
-import { setPreviewedDocxField } from './preview_builder.svelte';
+import { iterTableElements, setPreviewedDocxField } from './preview_builder.svelte';
+
+import { UNREACHABLE } from "./helper.svelte";
 
 export const docxTemplateState = $state({
 
@@ -32,6 +34,7 @@ export const docxTemplateState = $state({
     foundTables: [
         //proto
         // 	{
+        //      isFocused: false,
         // 		formedTitleStr: '',
         // 		dbMappedUiList: { sys_id: null, table_id: null, sys_table_name: null },
         // 		
@@ -66,6 +69,34 @@ export const docxTemplateState = $state({
         this.foundTables = [];
         this.dbMappedTaskTable = this._nullMappedTable();
         this.renderRootId = null;
+    },
+
+    async setupDependencyWithPreviewRender(outputBlob) {
+        this.renderRootId = await doDocxRendering(outputBlob);
+        for (const field of this.foundFields) {
+            setPreviewedDocxField(this.renderRootId, field);
+        }
+
+        let previewTableIter = iterTableElements(this.renderRootId);
+        for (let tableOrderIndex = 0; tableOrderIndex < this.foundTables.length; ++tableOrderIndex) {
+
+
+            const { done, value: previewTableElem } = previewTableIter.next();
+            if (done) {
+                UNREACHABLE();
+            }
+            this.foundTables[tableOrderIndex].previewTableElem = previewTableElem;
+
+            previewTableElem.onmouseenter = () => {
+                previewTableElem.style.backgroundColor = 'yellow';
+            };
+            previewTableElem.onmouseleave = () => {
+                previewTableElem.style.backgroundColor = 'unset';
+            };
+            previewTableElem.onclick = (event) => {
+                window.onPreviewTableFocus(tableOrderIndex, event);
+            };
+        }
     }
 
 });
@@ -122,12 +153,8 @@ export async function processFile({ buttonsState, fileBlob, fileName, docxFiles 
             })),
     }));
     docxTemplateState.isVisible = true;
-    docxTemplateState.renderRootId = await doDocxRendering(outputBlob);
-    
-    for (const field of docxTemplateState.foundFields) {
-        setPreviewedDocxField(docxTemplateState.renderRootId, field);
-    }
 
+    docxTemplateState.setupDependencyWithPreviewRender(outputBlob);
     return docxUrl;
 }
 
@@ -346,11 +373,7 @@ export async function loadExistingTemplate({ sys_id: template_sys_id }) {
 
     docxTemplateState.isVisible = true;
 
-    docxTemplateState.renderRootId = await doDocxRendering(new Blob([currentDocxArrayBuffer]));
-
-    for (const field of docxTemplateState.foundFields) {
-        setPreviewedDocxField(docxTemplateState.renderRootId, field);
-    }
+    await docxTemplateState.setupDependencyWithPreviewRender(new Blob([currentDocxArrayBuffer]));
 }
 
 export function log_svelte(...args) {

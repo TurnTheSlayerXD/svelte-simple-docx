@@ -16,7 +16,7 @@ if (input.action === 'createAttachmentAndReturnUrl') {
     const base64 = attachmentService.base64Encode(binary);
     const attachmentId = attachmentService.writeBase64(docId, docxFileName, base64, mimeType);
     data.attachmentUrl = attachmentService.getAttachmentUrlById(attachmentId);
-    
+
 }
 
 else if (input.action === 'fetchDocxScript') {
@@ -24,17 +24,11 @@ else if (input.action === 'fetchDocxScript') {
     sr.get('176538018815432077');
     data.docxLibraryScript = sr.script;
 }
-
 else if (input.action === 'fetchItamTaskTypes') {
     data.tableTypes = JSON.stringify(fetchItamTaskTypes());
 }
-
 else if (input.action === "createDocxTemplate") {
     const { docxBase64, selectTaskField, templateToRealValue, detectedTables } = input;
-    if (!selectTaskField.sys_id) {
-        return;
-    }
-
     const resultJSON = JSON.stringify({ selectTaskField, templateToRealValue, detectedTables });
 
     const docxTemplateSr = new SimpleRecord('itam_task_docx_template');

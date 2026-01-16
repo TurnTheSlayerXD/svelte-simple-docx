@@ -19,14 +19,18 @@
 
 	export async function doDocxRendering(blob) {
 		const docxRenderRoot = document.getElementById('docx-render-root');
+		while (docxRenderRoot.lastChild) {
+			docxRenderRoot.removeChild(docxRenderRoot.lastChild);
+		}
 		const rsp = await docxRenderLib.renderAsync(blob, docxRenderRoot);
-
 		return 'docx-render-root';
 	}
 </script>
 
 <script>
 	const state = $state({ isShow: false });
+
+	const { docxTemplateState = $bindable() , isVisibleRef } = $props();
 
 	const CONTAINER_HEIGHT = document.body.offsetHeight,
 		CONTAINER_WIDTH = 700;
@@ -137,43 +141,20 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-	class="container"
-	style:top={`${top}px`}
-	style:right={`${right}px`}
-	style:max-width={CONTAINER_WIDTH + 'px'}
-	style:max-height={CONTAINER_HEIGHT + 'px'}
-	bind:this={containerHook}
-	onmouseenter={containerOnMouseEnter}
-	onmouseleave={containerOnMouseLeave}
-	onmousedown={onMouseDown}
-	onmouseup={onMouseUp}
-	onmousemove={onMouseMove}
->
+<div class="container" bind:this={containerHook}>
 	<!-- svelte-ignore a11y_consider_explicit_label -->
-	<button
-		class="src-components-button-___styles-module__Default___Lp0Il const-btn"
-		style="z-index:20;"
-		onclick={() => {
-			state.isShow = !state.isShow;
-		}}
-		bind:this={buttonHook}
-	>
-		Show edited document
-	</button>
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div id="docx-render-root" class="docx-container" style:display={state.isShow ? 'block' : 'none'} bind:this={docxHook} onwheel={onWheel}></div>
+	<div id="docx-render-root" class="docx-container" bind:this={docxHook}></div>
 </div>
 
 <style>
 	.container {
-		position: fixed;
+		height: 100%;
+		overflow: scroll;
+		width: fit-content;
 		z-index: 20;
-		top: 48px;
-		right: 0px;
 		display: flex;
 		flex-direction: column;
-		overflow: hidden;
 		box-shadow:
 			0px 4px 6px rgba(0, 0, 0, 0.1),
 			0px 1px 4px rgba(0, 0, 0, 0.16);

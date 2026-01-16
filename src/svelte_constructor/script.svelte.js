@@ -3,7 +3,9 @@
 import { findPlacesInDocxToReplace } from './docx_replacement_detector.svelte';
 
 import { doDocxRendering } from './render_docx.svelte'
-import { setColorForPreviewedDocxField } from './preview_builder.svelte';
+import { iterTableElements, setPreviewedDocxField } from './preview_builder.svelte';
+
+import { UNREACHABLE } from "./helper.svelte";
 
 export const docxTemplateState = $state({
 
@@ -13,6 +15,7 @@ export const docxTemplateState = $state({
     _nullMappedTable: () => ({ sys_id: null, sys_table_name: null, display_value: null }),
     _nullMappedUiList: () => ({ sys_id: null, table_id: null, sys_table_name: null, display_value: null }),
 
+    renderRootId: null,
     dbMappedTaskTable: { sys_id: null, sys_table_name: null, display_value: null },
 
     conditionStringForTaskTable: 'parent_id.name=itam_tasks',
@@ -31,6 +34,7 @@ export const docxTemplateState = $state({
     foundTables: [
         //proto
         // 	{
+        //      isFocused: false,
         // 		formedTitleStr: '',
         // 		dbMappedUiList: { sys_id: null, table_id: null, sys_table_name: null },
         // 		
@@ -64,6 +68,35 @@ export const docxTemplateState = $state({
         this.foundFields = [];
         this.foundTables = [];
         this.dbMappedTaskTable = this._nullMappedTable();
+        this.renderRootId = null;
+    },
+
+    async setupDependencyWithPreviewRender(outputBlob) {
+        this.renderRootId = await doDocxRendering(outputBlob);
+        for (const field of this.foundFields) {
+            setPreviewedDocxField(this.renderRootId, field);
+        }
+
+        let previewTableIter = iterTableElements(this.renderRootId);
+        for (let tableOrderIndex = 0; tableOrderIndex < this.foundTables.length; ++tableOrderIndex) {
+
+
+            const { done, value: previewTableElem } = previewTableIter.next();
+            if (done) {
+                UNREACHABLE();
+            }
+            this.foundTables[tableOrderIndex].previewTableElem = previewTableElem;
+
+            previewTableElem.onmouseenter = () => {
+                previewTableElem.style.backgroundColor = 'yellow';
+            };
+            previewTableElem.onmouseleave = () => {
+                previewTableElem.style.backgroundColor = 'unset';
+            };
+            previewTableElem.onclick = (event) => {
+                window.onPreviewTableFocus(tableOrderIndex, event);
+            };
+        }
     }
 
 });
@@ -71,6 +104,10 @@ export const docxTemplateState = $state({
 export const templateRecordState = $state({
     sys_id: null,
     display_value: null,
+
+    reset() {
+        this.sys_id = null;
+    }
 });
 
 serverUpdate("fetchDocxScript").then(() => {
@@ -115,17 +152,14 @@ export async function processFile({ buttonsState, fileBlob, fileName, docxFiles 
                 dbMappedColumn: { ...docxTemplateState._nullMappedColumn() },
             })),
     }));
-
     docxTemplateState.isVisible = true;
 
-    docxTemplateState.renderRootId = await doDocxRendering(outputBlob);
-
+    docxTemplateState.setupDependencyWithPreviewRender(outputBlob);
     return docxUrl;
 }
 
 
-export async function generateTemplate(buttonsState, docxFiles) {
-    buttonsState.isUploadPreproccessedDisabled = true;
+export async function generateTemplate(docxFiles) {
     console.log("generateTemplate");
     s_widget.setFieldValue(
         "selectTaskField",
@@ -193,8 +227,6 @@ export async function generateTemplate(buttonsState, docxFiles) {
         s_widget.setFieldValue('docxTemplateSysId', '');
 
         templateRecordState.sys_id = docxTemplateSysId;
-
-        buttonsState.isUploadPreproccessedDisabled = false;
     }
 }
 
@@ -274,16 +306,9 @@ export async function fetchRelatedListsConditionByTableSysId(tableSysId) {
 export async function loadExistingTemplate({ sys_id: template_sys_id }) {
 
     if (!template_sys_id) {
-        templateRecordState.previous_sys_id = template_sys_id;
         docxTemplateState.clearAll();
         return;
     }
-    if (template_sys_id === templateRecordState.previous_sys_id) {
-        console.log('ignoring loadExistingTemplate');
-        return;
-    }
-    templateRecordState.previous_sys_id = template_sys_id;
-
 
     s_widget.setFieldValue('docxTemplateSysId', template_sys_id);
     await serverUpdate('getExistingDocxTemplateConfigById');
@@ -348,11 +373,7 @@ export async function loadExistingTemplate({ sys_id: template_sys_id }) {
 
     docxTemplateState.isVisible = true;
 
-    docxTemplateState.renderRootId = await doDocxRendering(new Blob([currentDocxArrayBuffer]));
-
-    for (const field of docxTemplateState.foundFields) {
-        setColorForPreviewedDocxField(docxTemplateState.renderRootId, field);
-    }
+    await docxTemplateState.setupDependencyWithPreviewRender(new Blob([currentDocxArrayBuffer]));
 }
 
 export function log_svelte(...args) {

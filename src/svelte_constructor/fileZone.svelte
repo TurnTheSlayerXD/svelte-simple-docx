@@ -25,17 +25,14 @@
 	}
 
 	function uploadContainerDragLeave(ev) {
-		console.log('uploadContainerDragLeave');
 		ev.preventDefault();
 		ev.stopImmediatePropagation();
 		containerState.isDragging = false;
 	}
 
 	function filezoneDrop(ev) {
-		console.log('filezoneDrop');
 		ev.preventDefault();
 		ev.stopImmediatePropagation();
-		console.log(ev);
 		containerState.isDragging = false;
 	}
 
@@ -65,12 +62,10 @@
 	const uploadedFiles = $state([]);
 	let currentDocxArrayBuffer;
 	let docxUrl = '';
-	let files;
+
 	const containerState = $state({ isDragging: false });
-	const docxFiles = {
-		sourceDocx: null,
-		templateDocx: null
-	};
+
+	let { docxFiles = $bindable() } = $props();
 
 	const buttonsState = $state({
 		isUploadPreproccessedDisabled: true
@@ -223,7 +218,7 @@
 				class={buttonsState.isUploadPreproccessedDisabled
 					? 'src-components-button-___styles-module__Default___Lp0Il primary-button-disabled'
 					: 'src-components-button-___styles-module__Default___Lp0Il'}
-				onclick={() => generateTemplate(buttonsState, docxFiles)}
+				onclick={() => generateTemplate(docxFiles)}
 				disabled={buttonsState.isUploadPreproccessedDisabled}
 			>
 				Generate template
@@ -231,7 +226,7 @@
 		{:else}
 			<button
 				class="src-components-button-___styles-module__Default___Lp0Il process-file__button"
-				onclick={() => generateTemplate(buttonsState)}
+				onclick={() => generateTemplate()}
 				disabled={false}
 			>
 				Update template

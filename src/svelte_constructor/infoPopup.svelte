@@ -1,22 +1,4 @@
 <script module>
-	function setOffsetForPopup(baseElement, popupElement) {
-		if (!(baseElement instanceof HTMLElement) || !(popupElement instanceof HTMLElement)) {
-			throw new Error();
-		}
-		popupElement.style.left = baseElement.offsetLeft + baseElement.offsetWidth + 'px';
-		const baseRect = baseElement.getBoundingClientRect();
-		const popupRect = popupElement.getBoundingClientRect();
-		if (baseRect.y + baseRect.height + popupRect.height > window.innerHeight) {
-			popupElement.style.bottom = baseElement.offsetParent.offsetHeight - baseElement.offsetTop + 'px';
-			popupElement.style.top = 'unset';
-		} else {
-			popupElement.style.top = baseElement.offsetTop + baseElement.offsetHeight + 'px';
-			popupElement.style.bottom = 'unset';
-		}
-		// console.log('baseElement', baseElement);
-		// console.log('popupElement', popupElement);
-	}
-
 	function calcXposition(anchorHook) {
 		if (!(anchorHook instanceof HTMLElement)) {
 			throw new Error();

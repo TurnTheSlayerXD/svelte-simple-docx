@@ -1,16 +1,3 @@
-<script module>
-	export function onWindowClickToClosePopup(e, popupBoxRef) {
-		let { target } = e;
-		while (target && !target.getAttribute('dropdown')) {
-			target = target.parentElement;
-		}
-
-		if (!target) {
-			popupBoxRef.isPopupOpened = false;
-		}
-	}
-</script>
-
 <script>
 	let { popupBoxRef = $bindable() } = $props();
 </script>

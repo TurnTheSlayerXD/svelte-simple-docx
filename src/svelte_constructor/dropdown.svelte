@@ -1,26 +1,3 @@
-<script module>
-	import { trackedOpenedInfoPopups } from './referenceField.svelte';
-
-	const trackedPopups = [];
-	export function onWindowClick(e) {
-		let { target } = e;
-		while (target && !target.getAttribute('dropdown')) {
-			target = target.parentElement;
-		}
-
-		// if it is just other window click, we can close all popups
-		if (!target) {
-			for (const popup of trackedPopups) {
-				popup.isPopupOpened = false;
-			}
-
-			for (const infoPopupParams of trackedOpenedInfoPopups) {
-				infoPopupParams.isVisible = false;
-			}
-		}
-	}
-</script>
-
 <script>
 	const { optionField, optionSource, fieldTitle, getFieldTitleCallback, getOptionTitleCallback, onBeforeOptionSelectCallback } = $props();
 

@@ -5,9 +5,8 @@
 	import ReferenceField, { fetchDataFromApi } from './referenceField.svelte';
 
 	import Checkbox from './checkbox.svelte';
-	import { onWindowClick } from './dropdown.svelte';
+	import { onWindowClick, onWindowClickToClosePopup } from './window_methods.svelte';
 	import MyInput from './MyInput.svelte';
-	import { onWindowClickToClosePopup } from './PopupBox.svelte';
 	import { onEnumerationOptionClick, onSciptedOptionClick, loadExistingTemplate, docxTemplateState } from './script.svelte.js';
 
 	import PopupBox from './PopupBox.svelte';
@@ -22,6 +21,8 @@
 	import { setPreviewedDocxField } from './preview_builder.svelte';
 
 	import RenderDocx from './render_docx.svelte';
+
+	import { addScrollable } from './scrollableHandling.svelte';
 
 	async function actionWhenTaskTableSelected({ sys_id: taskTableSysId, name }) {
 		if (taskTableSysId === docxTemplateState.dbMappedTaskTable.previous_sys_id) {
@@ -110,6 +111,12 @@
 	let resizeHelperHook = $state();
 
 	let sidebarScrollHook = $state();
+
+	$effect(() => {
+		if (sidebarScrollHook) {
+			addScrollable(sidebarScrollHook);
+		}
+	});
 
 	window.onPreviewInputFocus = (field) => {
 		docxTemplateState.isVisible = true;

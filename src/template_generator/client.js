@@ -506,9 +506,6 @@ class TableStruct {
                 for (const row of rowsGenerator) {
                     this.insertRow(rowToCopy, indexToInsert, row);
                     indexToInsert += 1;
-                    // console.log(this.rows.map(t => ({ text: t.textContent(), index: t.indexInJson })));
-                    // console.log(this.root.elements.map((t, i) => ({ text: collectText(t), index: i })));
-                    // console.log();
                 }
             }
         }

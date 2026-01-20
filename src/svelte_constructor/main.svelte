@@ -89,8 +89,8 @@
 	}
 
 	let popupBoxRef = $state({});
-
 	let sidebarPopupBoxRef = $state({});
+	let sidebarHeaderPopupBoxRef = $state({});
 
 	let isDocxTemplateSelected = $derived(!!templateRecordState.sys_id || !!docxFiles.templateDocx);
 	let isSidebarVisible = $derived(isDocxTemplateSelected);
@@ -111,7 +111,7 @@
 
 	let sidebarScrollHook = $state();
 
-	window.onPreviewInputFocus = (fieldTemplateStr) => {
+	window.onPreviewInputFocus = (field) => {
 		docxTemplateState.isVisible = true;
 		for (const field of docxTemplateState.foundFields) {
 			field.isFocused = false;
@@ -120,11 +120,11 @@
 			table.isFocused = false;
 		}
 
-		const fieldRef = docxTemplateState.foundFields.find((field) => field.templateStr === fieldTemplateStr);
+		const fieldRef = field;
 		if (!fieldRef) {
 			throw new Error('const fieldRef = docxTemplateState.foundFields.find(field => field.templateStr === fieldTemplateStr);');
 		}
-		const { previewField, htmlHook } = fieldRef;
+		const { htmlHook } = fieldRef;
 
 		sidebarScrollHook.scrollBy(0, htmlHook.getBoundingClientRect().top - document.body.offsetHeight / 2);
 
@@ -150,6 +150,7 @@
 		focusedTable.isFocused = true;
 		sidebarScrollHook.scrollBy(0, focusedTable.htmlHook.getBoundingClientRect().top - document.body.offsetHeight / 2);
 	};
+
 	// window.onPreviewButtonClick = (fieldTemplateStr) => {
 	// 	const fieldRef = docxTemplateState.foundFields.find((field) => field.templateStr === fieldTemplateStr);
 	// 	if (!fieldRef) {
@@ -172,6 +173,7 @@
 		onWindowClick(event);
 		onWindowClickToClosePopup(event, popupBoxRef);
 		onWindowClickToClosePopup(event, sidebarPopupBoxRef);
+		onWindowClickToClosePopup(event, sidebarHeaderPopupBoxRef);
 	}}
 />
 
@@ -249,9 +251,8 @@
 		></div>
 
 		<div class="sidebar-inner" bind:this={sidebarScrollHook}>
-			<PopupBox popupBoxRef={sidebarPopupBoxRef}></PopupBox>
-
 			<div class="sidebar-header">
+				<PopupBox popupBoxRef={sidebarHeaderPopupBoxRef}></PopupBox>
 				<!-- svelte-ignore a11y_consider_explicit_label -->
 				<button
 					class="src-components-button-___styles-module__Default___Lp0Il src-components-button-___styles-module__Icon___gxSRu src-components-modalWindow-___styles-module__CloseIco___xiEBF"
@@ -277,7 +278,7 @@
 					actionWhenValueSelected={actionWhenTaskTableSelected}
 					displayByRefColumnName="title"
 					otherColumnsToFetch={['name']}
-					popupBoxRef={sidebarPopupBoxRef}
+					popupBoxRef={sidebarHeaderPopupBoxRef}
 					fieldTitle="ITAM Task table"
 				></ReferenceField>
 
@@ -305,6 +306,7 @@
 				</button>
 			</div>
 
+			<PopupBox popupBoxRef={sidebarPopupBoxRef}></PopupBox>
 			{#if docxTemplateState.dbMappedTaskTable.sys_id}
 				<div class="sidebar-body">
 					{#each docxTemplateState.foundTables as relatedTable}
@@ -365,7 +367,7 @@
 												</div>
 											</div>
 
-											<div style="max-width: 200px; width: -webkit-fill-available;">
+											<div style="width: 500px;">
 												{#if column.dbMappedColumn.isScripted}
 													<ReferenceField
 														table="itam_script_table_mapping"
@@ -418,37 +420,7 @@
 
 					{#each docxTemplateState.foundFields as field}
 						<div class="docx-field-row" bind:this={field.htmlHook} style:background={field.isFocused ? '#e5f4ff' : 'unset'}>
-							<!-- <div style="">
-								<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L" data-test="field-Purchase documentation">
-									<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA">
-										<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc">
-											<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B" data-test="document_id-label">
-												<span class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-													><span>Template field</span></span
-												>
-											</div>
-										</div>
-									</div>
-
-									<MyInput binding={field.templateStr} readonly={true}></MyInput>
-								</div>
-							</div>
-							<div style="">
-								<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Field___BH07L" data-test="field-Purchase documentation">
-									<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameWrap___STsiA">
-										<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Name___fSBsc">
-											<div class="src-components-dynamicForms-view-fieldWrapper-___styles-module__NameText___Pc25B" data-test="document_id-label">
-												<span class="src-components-dynamicForms-view-fieldWrapper-___styles-module__Label___tjzWY + undefined"
-													><span>Original value</span></span
-												>
-											</div>
-										</div>
-									</div>
-									<MyInput binding={field.sourceStr} readonly={true}></MyInput>
-								</div>
-							</div> -->
-
-							<div style="max-width: 250px; width: -webkit-fill-available;">
+							<div style="width: 500px;">
 								{#if field.dbMappedColumn.isScripted}
 									<ReferenceField
 										table="itam_script_table_mapping"
@@ -500,7 +472,7 @@
 		top: 0;
 		right: 0;
 		width: 600px;
-		max-width: 900px;
+		/* max-width: 900px; */
 		min-width: 550px;
 
 		box-shadow:

@@ -3,6 +3,9 @@ import { UNREACHABLE } from "./helper.svelte";
 
 export function getPreviewObjectFromFieldTemplate(renderRootId, fieldTemplate) {
     const renderRoot = document.getElementById(renderRootId);
+
+    console.log("field tempalte ", fieldTemplate);
+
     const expression = `//*[contains(text(),'${fieldTemplate}')]`;
     const iterResult = document.evaluate(expression, renderRoot);
     let targetNode = iterResult.iterateNext();
@@ -16,7 +19,7 @@ export function setPreviewedDocxField(renderRootId, field) {
     let wasAlreadyReplaced = true;
     if (!field.previewField) {
         wasAlreadyReplaced = false;
-        field.previewField = getPreviewObjectFromFieldTemplate(renderRootId, field.templateStr);
+        field.previewField = getPreviewObjectFromFieldTemplate(renderRootId, field.templateString);
     }
 
     const { previewField: previewHook } = field;
@@ -65,12 +68,6 @@ export function setPreviewedDocxField(renderRootId, field) {
         };
         previewHook.insertAdjacentElement('afterbegin', newInputElement);
     }
-    // const { dbMappedColumn } = field;
-    // if (dbMappedColumn.sys_id || dbMappedColumn.isEnumerated) {
-    //     targetNode.style.backgroundColor = 'green';
-    // } else {
-    //     targetNode.style.backgroundColor = 'yellow';
-    // }
 }
 
 

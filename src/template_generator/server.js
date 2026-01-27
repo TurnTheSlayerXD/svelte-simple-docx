@@ -18,132 +18,78 @@ if (input.action === 'init') {
     return;
 }
 
-if (input.action === 'fetchTableColumns') {
-    const { tableNameOfCurrentTask, idOfCurrentTask, requiredColumns, requiredScripts } = input;
-    const taskSr = new SimpleRecord(tableNameOfCurrentTask);
-    taskSr.addQuery('sys_id', idOfCurrentTask);
-    taskSr.setLimit(1);
-    taskSr.query();
-    if (!taskSr.next()) {
-        throw new Error('no such task');
-    }
-    let returnObject = {};
-    for (const column of requiredColumns) {
-        returnObject[column] = taskSr.getDisplayValue(column);
-    }
-    data.dataOfCurrentTaskPerColumn = returnObject;
+if (input.action === 'fetchTableData') {
+    const { templateSysId, recordSysIdToSearchDataFrom, recordTableName } = input;
 
-    const mappingScriptSr = new SimpleRecord('itam_script_table_mapping');
-    mappingScriptSr.addQuery('sys_id', 'in', requiredScripts.map(t => t.script_id));
-    mappingScriptSr.selectAttributes(['script_text']);
-    mappingScriptSr.query();
-    returnObject = {};
-    while (mappingScriptSr.next()) {
-        const resultOfSciptEvaluation = (() => {
-            eval(mappingScriptSr.script_text);
-            return extractValue(taskSr);
-        })();
-        const matchingTemplate = requiredScripts.find(t => t.script_id === mappingScriptSr.sys_id).template;
-        returnObject[matchingTemplate] = resultOfSciptEvaluation;
-    }
-    data.dataOfCurrentTaskPerScript = returnObject;
-}
-else if (input.action === 'fetchTableData') {
-    const { tableColumnDescription, idOfCurrentTask, tableNameOfCurrentTask } = input;
-    const relatedListElementSr = new SimpleRecord('sys_ui_related_list_element');
-    relatedListElementSr.addQuery('sys_id', 'in', tableColumnDescription.map(dt => dt.related_list_sys_id));
-    relatedListElementSr.selectAttributes(['related_column_id', 'related_list_script_id']);
-    relatedListElementSr.query();
+    const templateSr = new SimpleRecord("itam_task_docx_template");
+    templateSr.get(templateSysId);
+
+    const templateData = JSON.parse(templateSr.template_data);
+
+    const current = new SimpleRecord(recordTableName);
+    current.get(recordSysIdToSearchDataFrom);
+
+    myAssert(templateData.selectTaskField.name === recordTableName);
+
 
     const resultData = [];
+    for (const field of templateData.templateToRealValue) {
 
-    const taskSr = new SimpleRecord(tableNameOfCurrentTask);
-    taskSr.get(idOfCurrentTask);
+        const result = { templateString: null, replacementData: { isRowData: false, replacementString: null } };
 
-    while (relatedListElementSr.next()) {
+        result.templateString = field.templateString;
 
-        resultData.push({ related_list_sys_id: relatedListElementSr.sys_id, rows: [], script_rows: [], });
-        const dataOfCurrentTable = resultData.at(-1);
+        if (!field.value.sys_id) {
+            result.replacementData.isRowData = false;
+            result.replacementData.replacementString = field.sourceString;
+        }
+        else if (field.value.isScripted) {
 
-        const currentDesciption = tableColumnDescription.find(dt => dt.related_list_sys_id === relatedListElementSr.sys_id);
+            const scriptSr = new SimpleRecord("itam_script_table_mapping");
+            scriptSr.get(field.value.sys_id);
 
-        if (relatedListElementSr.getValue('related_list_script_id')) {
+            if (scriptSr.does_return_list && !field.isInsideRow) {
+                throwError("scriptSr.does_return_list && !field.isInsideRow");
+            }
 
-            const relatedListScriptSr = relatedListElementSr.related_list_script_id;
-            relatedListScriptSr.query_from.name === currentDesciption.table_name || throwError('Unmatched tablename', relatedListScriptSr.query_from.name, currentDesciption.table_name);
+            eval(scriptSr.script_text);
+            const ret = extractValue(current);
 
-            const queryFromSr = new SimpleRecord(relatedListScriptSr.query_from.name);
-            const queryDataScript = relatedListScriptSr.query_with;
+            if (scriptSr.does_return_list) {
+                myAssert(typeof ret === "object" && ret instanceof Array);
 
-            //isolated
-            (() => {
-                const mappingScriptSr = new SimpleRecord('itam_script_table_mapping');
-                mappingScriptSr.addQuery('sys_id', 'in', currentDesciption.scripts.map(t => t.script_id));
-                mappingScriptSr.selectAttributes(['script_text']);
-                mappingScriptSr.query();
-                const mappingScriptTexts = [];
-                while (mappingScriptSr.next()) {
-                    mappingScriptTexts.push({
-                        template: currentDesciption.scripts.find(t => t.script_id === mappingScriptSr.sys_id).template,
-                        mappingScriptText: mappingScriptSr.script_text,
-                    });
-                }
-                const current = queryFromSr;
-                const parent = taskSr;
-
-                eval(queryDataScript);
-
-                current.query();
-                while (current.next()) {
-                    const newDataRow = {};
-                    for (const column of currentDesciption.columns) {
-                        newDataRow[column] = current.getDisplayValue(column);
-                    }
-                    dataOfCurrentTable.rows.push(newDataRow);
-
-                    const newScriptDataRow = {};
-                    for (const { template, mappingScriptText } of mappingScriptTexts) {
-                        const scriptResult = (() => {
-
-                            eval(mappingScriptText);
-
-                            return extractValue(current);
-                        })();
-                        newScriptDataRow[template] = scriptResult;
-                    }
-
-                    dataOfCurrentTable.script_rows.push(newScriptDataRow);
+                for (const str of ret) {
+                    myAssert(typeof str === "string");
                 }
 
-            })();
-            //end of isolation
+                result.replacementData.isRowData = true;
+                result.replacementData.replacements = ret;
+                result.replacementData.rowGroupId = field.rowGroupId;
+            }
+            else {
+                myAssert(typeof ret === "string");
+                result.replacementData.isRowData = false;
+                result.replacementData.replacementString = ret;
+            }
+
         }
         else {
-            const relatedColumnName = relatedListElementSr.related_column_id.column_name;
-
-            relatedListElementSr.related_table_id.name === currentDesciptio.table_name || throwError('Unmatched tablename', relatedListElementSr.related_table_id.name, currentDesciptio.table_name);
-
-            const relatedTableSr = new SimpleRecord(relatedListElementSr.related_table_id.name);
-            relatedTableSr.addQuery(relatedColumnName, taskSr.sys_id);
-            relatedTableSr.selectAttributes(currentDesciption.columns);
-            while (relatedTableSr.next()) {
-                const newDataRow = {};
-                for (const column of currentDesciption.columns) {
-                    newDataRow[column] = relatedTableSr.getDisplayValue(column);
-                }
-                dataOfCurrentTable.rows.push(newDataRow);
-            }
+            result.replacementData.isRowData = false;
+            result.replacementData.replacementString = current[field.value.name];
         }
 
-        if (currentDesciption.scripts.length === 0) {
-            continue;
-        }
-
-
-
+        resultData.push(result);
     }
 
     data.resultData = resultData;
+}
+
+
+function myAssert(condition, message = '') {
+
+    if (!condition) {
+        throw new Error(`Assertion failed with message: ${message}`);
+    }
 }
 
 function throwError(...message) {

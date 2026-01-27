@@ -3,9 +3,6 @@ import { UNREACHABLE } from "./helper.svelte";
 
 export function getPreviewObjectFromFieldTemplate(renderRootId, fieldTemplate) {
     const renderRoot = document.getElementById(renderRootId);
-
-    console.log("field tempalte ", fieldTemplate);
-
     const expression = `//*[contains(text(),'${fieldTemplate}')]`;
     const iterResult = document.evaluate(expression, renderRoot);
     let targetNode = iterResult.iterateNext();

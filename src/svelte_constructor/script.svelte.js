@@ -80,9 +80,10 @@ export async function serverUpdate(action) {
 // import * as docx from "./docx-generator.d.ts";
 export async function processFile({ buttonsState, fileBlob, fileName, docxFiles }) {
 
+
+    console.log("START docx.ITAM_processFileAndFindPlacesToReplace");
     const [outputBlob, fields] = await docx.ITAM_processFileAndFindPlacesToReplace(fileBlob);
-
-
+    console.log("END docx.ITAM_processFileAndFindPlacesToReplace");
 
     docxFiles.sourceDocx = fileBlob;
     docxFiles.templateDocx = outputBlob;

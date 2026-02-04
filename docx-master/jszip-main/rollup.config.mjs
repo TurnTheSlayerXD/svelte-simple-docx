@@ -2,7 +2,7 @@ import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 
 export default {
-  input: "lib/jszip-entry.js",
+  input: "impl_lib/jszip-entry.js",
   output: [
     {
       file: "dist/index.js",

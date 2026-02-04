@@ -36,9 +36,7 @@ export const regexPatchDocument = async <T extends PatchDocumentOutputType = Pat
     keepOriginalStyles,
     recursion,
 }: RegexPatchDocumentOptions<T>): Promise<OutputByType[T]> => {
-    // console.log("JSZip", JSZip);
-    const zipContent = data instanceof JSZip ? data : await JSZip.loadAsync(data);
-
+    const zipContent = data instanceof JSZip ? data : JSZip.loadAsync(data);
     const contexts = new Map<string, IContext>();
     const file = {
         Media: new Media(),
@@ -54,9 +52,10 @@ export const regexPatchDocument = async <T extends PatchDocumentOutputType = Pat
 
     const binaryContentMap = new Map<string, Uint8Array>();
 
+    // ss.info('binaryContentMap');
 
     for (const [key, value] of Object.entries(zipContent.files)) {
-        const binaryValue = await value.async("uint8array");
+        const binaryValue = value.sync("nodebuffer");
         const startBytes = binaryValue.slice(0, 2);
         if (compareByteArrays(startBytes, UTF16LE) || compareByteArrays(startBytes, UTF16BE)) {
             binaryContentMap.set(key, binaryValue);
@@ -85,6 +84,8 @@ export const regexPatchDocument = async <T extends PatchDocumentOutputType = Pat
         }
 
         if (key.startsWith("word/") && !key.endsWith(".xml.rels")) {
+
+            console.log("REached word");
             const context: IContext = {
                 file,
                 viewWrapper: {
@@ -259,11 +260,12 @@ export type ProcessingTemplateResult = {
 
 export async function ITAM_processFileAndFindPlacesToReplace(blob: any): Promise<any> {
 
+
     try {
         const patchGenerator = new PatchGenerator();
         const outputBlob = await regexPatchDocument(
             {
-                outputType: "nodebuffer",
+                outputType: "base64",
                 data: blob,
                 patchGenerator,
                 recursion: { is_recursive: true, max_recursion: 100 },
@@ -297,12 +299,9 @@ export async function ITAM_processFileAndFindPlacesToReplace(blob: any): Promise
                     return { sourceString: t.sourceString, replacementString: t.patchString, isInsideRow: false };
                 }));
 
-        console.log(groups);
-
         return [outputBlob, patches];
     } catch (err) {
-        console.error(err);
-        return err;
+        throw err;
     }
 }
 
@@ -313,75 +312,72 @@ export type TypeToReplaceTemplates = {
 
 export async function ITAM_replaceTemplateFieldsInDocxAndGetOutputBuffer(patches: TypeToReplaceTemplates[], inputArrayBuffer: any): Promise<any> {
 
-    try {
-        const rowPatches = patches
-            .map(t => t.replacementData.isRowData ?
-                ({
-                    templateString: t.templateString,
-                    groupId: t.replacementData.rowGroupId,
-                    replacementsLength: t.replacementData.replacements.length,
-                    replacements: t.replacementData.replacements
-                })
-                : undefined)
-            .filter(t => t !== undefined) as unknown as {
-                templateString: string;
-                groupId: number;
-                replacementsLength: number;
-                replacements: string[];
-            }[];
+    const rowPatches = patches
+        .map(t => t.replacementData.isRowData ?
+            ({
+                templateString: t.templateString,
+                groupId: t.replacementData.rowGroupId,
+                replacementsLength: t.replacementData.replacements.length,
+                replacements: t.replacementData.replacements
+            })
+            : undefined)
+        .filter(t => t !== undefined) as unknown as {
+            templateString: string;
+            groupId: number;
+            replacementsLength: number;
+            replacements: string[];
+        }[];
 
-        const appendRowsCallback = (json: Element): void => {
-            const groups = new Map<number, IRowWithRepeat>();
-            for (const { groupId, replacementsLength, templateString } of rowPatches) {
-                if (!groups.has(groupId)) {
-                    groups.set(groupId, { timesToRepeatRow: replacementsLength, textWithinRow: templateString });
-                }
-                if (replacementsLength > groups.get(groupId)!.timesToRepeatRow) {
-                    groups.set(groupId, { timesToRepeatRow: replacementsLength, textWithinRow: templateString });
-                }
+    const appendRowsCallback = (json: Element): void => {
+        const groups = new Map<number, IRowWithRepeat>();
+        for (const { groupId, replacementsLength, templateString } of rowPatches) {
+            if (!groups.has(groupId)) {
+                groups.set(groupId, { timesToRepeatRow: replacementsLength, textWithinRow: templateString });
             }
-
-            copyAppendRowsToTable({ json, rowsWithRepeats: [...groups.values()] });
-        };
-
-        const replaceRowDataCallback = (json: Element, context: IContext) => {
-            const replacementCycle = (patchText: string, patchValues: IPatch[]) => {
-                const indexRef = { i: 0 };
-                while (true) {
-                    const { didFindOccurrence } = arrayReplacer({
-                        json,
-                        patches: patchValues,
-                        patchText: patchText,
-                        context,
-                        keepOriginalStyles: true,
-                        indexRef,
-                    });
-                    // What the reason doing that? Once document is patched - it search over patched json again, that takes too long if patched document has big and deep structure.
-                    if (!didFindOccurrence) {
-                        break;
-                    }
-                }
-            };
-
-            for (const { templateString, replacements } of rowPatches) {
-                const patches = replacements.map(t => ({ type: PatchType.PARAGRAPH, children: [new TextRun(t)] }));
-                replacementCycle(templateString, patches);
-            }
-        };
-
-        const notRowPatches: Record<string, IPatch> = {};
-        for (const p of patches) {
-            if (!p.replacementData.isRowData) {
-                notRowPatches[p.templateString] = { type: PatchType.PARAGRAPH, children: [new TextRun(p.replacementData.replacementString)] };
+            if (replacementsLength > groups.get(groupId)!.timesToRepeatRow) {
+                groups.set(groupId, { timesToRepeatRow: replacementsLength, textWithinRow: templateString });
             }
         }
-        const output = await patchDocument(
-            { outputType: "nodebuffer", data: inputArrayBuffer, patches: notRowPatches, keepOriginalStyles: true, recursive: true },
-            [appendRowsCallback, replaceRowDataCallback]);
-        return output;
+
+        copyAppendRowsToTable({ json, rowsWithRepeats: [...groups.values()] });
+    };
+
+    const replaceRowDataCallback = (json: Element, context: IContext) => {
+        const replacementCycle = (patchText: string, patchValues: IPatch[]) => {
+            const indexRef = { i: 0 };
+            while (true) {
+                const { didFindOccurrence } = arrayReplacer({
+                    json,
+                    patches: patchValues,
+                    patchText: patchText,
+                    context,
+                    keepOriginalStyles: true,
+                    indexRef,
+                });
+                // What the reason doing that? Once document is patched - it search over patched json again, that takes too long if patched document has big and deep structure.
+                if (!didFindOccurrence) {
+                    break;
+                }
+            }
+        };
+
+        for (const { templateString, replacements } of rowPatches) {
+            const patches = replacements.map(t => ({ type: PatchType.PARAGRAPH, children: [new TextRun(t)] }));
+            replacementCycle(templateString, patches);
+        }
+    };
+
+    const notRowPatches: Record<string, IPatch> = {};
+    for (const p of patches) {
+        if (!p.replacementData.isRowData) {
+            notRowPatches[p.templateString] = { type: PatchType.PARAGRAPH, children: [new TextRun(p.replacementData.replacementString)] };
+        }
     }
-    catch (err) {
-        return err;
-    }
+    const output = await patchDocument(
+        { outputType: "nodebuffer", data: inputArrayBuffer, patches: notRowPatches, keepOriginalStyles: true, recursive: true },
+        [appendRowsCallback, replaceRowDataCallback]);
+    return output;
 }
+
+export { ss };
 

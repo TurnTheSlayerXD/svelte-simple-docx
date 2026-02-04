@@ -37,7 +37,7 @@ function string2binary(str) {
  * @param {String} type the mime type of the blob.
  * @return {Blob} the created blob.
  */
-exports.newBlob = function(part, type) {
+exports.newBlob = function (part, type) {
     exports.checkSupport("blob");
 
     try {
@@ -101,7 +101,7 @@ var arrayToStringHelper = {
      * @return {String} the resulting string.
      * @throws Error if the chunk is too big for the stack.
      */
-    stringifyByChunk: function(array, type, chunk) {
+    stringifyByChunk: function (array, type, chunk) {
         var result = [], k = 0, len = array.length;
         // shortcut
         if (len <= chunk) {
@@ -125,18 +125,18 @@ var arrayToStringHelper = {
      * @param {Array|ArrayBuffer|Uint8Array|Buffer} array the array to transform.
      * @return {String} the result.
      */
-    stringifyByChar: function(array){
+    stringifyByChar: function (array) {
         var resultStr = "";
-        for(var i = 0; i < array.length; i++) {
+        for (var i = 0; i < array.length; i++) {
             resultStr += String.fromCharCode(array[i]);
         }
         return resultStr;
     },
-    applyCanBeUsed : {
+    applyCanBeUsed: {
         /**
          * true if the browser accepts to use String.fromCharCode on Uint8Array
          */
-        uint8array : (function () {
+        uint8array: (function () {
             try {
                 return support.uint8array && String.fromCharCode.apply(null, new Uint8Array(1)).length === 1;
             } catch (e) {
@@ -146,7 +146,7 @@ var arrayToStringHelper = {
         /**
          * true if the browser accepts to use String.fromCharCode on nodejs Buffer.
          */
-        nodebuffer : (function () {
+        nodebuffer: (function () {
             try {
                 return support.nodebuffer && String.fromCharCode.apply(null, nodejsUtils.allocBuffer(1)).length === 1;
             } catch (e) {
@@ -218,16 +218,16 @@ var transform = {};
 // string to ?
 transform["string"] = {
     "string": identity,
-    "array": function(input) {
+    "array": function (input) {
         return stringToArrayLike(input, new Array(input.length));
     },
-    "arraybuffer": function(input) {
+    "arraybuffer": function (input) {
         return transform["string"]["uint8array"](input).buffer;
     },
-    "uint8array": function(input) {
+    "uint8array": function (input) {
         return stringToArrayLike(input, new Uint8Array(input.length));
     },
-    "nodebuffer": function(input) {
+    "nodebuffer": function (input) {
         return stringToArrayLike(input, nodejsUtils.allocBuffer(input.length));
     }
 };
@@ -236,30 +236,30 @@ transform["string"] = {
 transform["array"] = {
     "string": arrayLikeToString,
     "array": identity,
-    "arraybuffer": function(input) {
+    "arraybuffer": function (input) {
         return (new Uint8Array(input)).buffer;
     },
-    "uint8array": function(input) {
+    "uint8array": function (input) {
         return new Uint8Array(input);
     },
-    "nodebuffer": function(input) {
+    "nodebuffer": function (input) {
         return nodejsUtils.newBufferFrom(input);
     }
 };
 
 // arraybuffer to ?
 transform["arraybuffer"] = {
-    "string": function(input) {
+    "string": function (input) {
         return arrayLikeToString(new Uint8Array(input));
     },
-    "array": function(input) {
+    "array": function (input) {
         return arrayLikeToArrayLike(new Uint8Array(input), new Array(input.byteLength));
     },
     "arraybuffer": identity,
-    "uint8array": function(input) {
+    "uint8array": function (input) {
         return new Uint8Array(input);
     },
-    "nodebuffer": function(input) {
+    "nodebuffer": function (input) {
         return nodejsUtils.newBufferFrom(new Uint8Array(input));
     }
 };
@@ -267,14 +267,14 @@ transform["arraybuffer"] = {
 // uint8array to ?
 transform["uint8array"] = {
     "string": arrayLikeToString,
-    "array": function(input) {
+    "array": function (input) {
         return arrayLikeToArrayLike(input, new Array(input.length));
     },
-    "arraybuffer": function(input) {
+    "arraybuffer": function (input) {
         return input.buffer;
     },
     "uint8array": identity,
-    "nodebuffer": function(input) {
+    "nodebuffer": function (input) {
         return nodejsUtils.newBufferFrom(input);
     }
 };
@@ -282,13 +282,13 @@ transform["uint8array"] = {
 // nodebuffer to ?
 transform["nodebuffer"] = {
     "string": arrayLikeToString,
-    "array": function(input) {
+    "array": function (input) {
         return arrayLikeToArrayLike(input, new Array(input.length));
     },
-    "arraybuffer": function(input) {
+    "arraybuffer": function (input) {
         return transform["nodebuffer"]["uint8array"](input).buffer;
     },
-    "uint8array": function(input) {
+    "uint8array": function (input) {
         return arrayLikeToArrayLike(input, new Uint8Array(input.length));
     },
     "nodebuffer": identity
@@ -302,7 +302,7 @@ transform["nodebuffer"] = {
  * @param {String|Array|ArrayBuffer|Uint8Array|Buffer} input the input to convert.
  * @throws {Error} an Error if the browser doesn't support the requested output type.
  */
-exports.transformTo = function(outputType, input) {
+exports.transformTo = function (outputType, input) {
     if (!input) {
         // undefined, null, etc
         // an empty string won't harm.
@@ -325,7 +325,7 @@ exports.transformTo = function(outputType, input) {
  * @param {string} path A path with / or \ separators
  * @returns {string} The path with all relative path components resolved.
  */
-exports.resolve = function(path) {
+exports.resolve = function (path) {
     var parts = path.split("/");
     var result = [];
     for (var index = 0; index < parts.length; index++) {
@@ -348,7 +348,7 @@ exports.resolve = function(path) {
  * @param {Object} input the input to identify.
  * @return {String} the (lowercase) type of the input.
  */
-exports.getTypeOf = function(input) {
+exports.getTypeOf = function (input) {
     if (typeof input === "string") {
         return "string";
     }
@@ -371,7 +371,7 @@ exports.getTypeOf = function(input) {
  * @param {String} type the type to check.
  * @throws {Error} an Error if the browser doesn't support the requested type.
  */
-exports.checkSupport = function(type) {
+exports.checkSupport = function (type) {
     var supported = support[type.toLowerCase()];
     if (!supported) {
         throw new Error(type + " is not supported by this platform");
@@ -386,7 +386,7 @@ exports.MAX_VALUE_32BITS = -1; // well, "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF" is pa
  * @param {string} str the string to prettify.
  * @return {string} a pretty string.
  */
-exports.pretty = function(str) {
+exports.pretty = function (str) {
     var res = "",
         code, i;
     for (i = 0; i < (str || "").length; i++) {
@@ -401,11 +401,10 @@ exports.pretty = function(str) {
  * @param {Function} callback the function to call asynchronously.
  * @param {Array} args the arguments to give to the callback.
  */
-exports.delay = function(callback, args, self) {
-    callback.apply(self || null, args || []);
-    // setImmediate(function () {
-        // callback.apply(self || null, args || []);
-    // });
+exports.delay = function (callback, args, self) {
+    setImmediate(function () {
+        callback.apply(self || null, args || []);
+    });
 };
 
 /**
@@ -415,7 +414,7 @@ exports.delay = function(callback, args, self) {
  * @param {Function} superCtor the parent constructor to use
  */
 exports.inherits = function (ctor, superCtor) {
-    var Obj = function() {};
+    var Obj = function () { };
     Obj.prototype = superCtor.prototype;
     ctor.prototype = new Obj();
 };
@@ -426,7 +425,7 @@ exports.inherits = function (ctor, superCtor) {
  * @param {...Object} var_args All objects to merge.
  * @return {Object} a new object with the data of the others.
  */
-exports.extend = function() {
+exports.extend = function () {
     var result = {}, i, attr;
     for (i = 0; i < arguments.length; i++) { // arguments is not enumerable in some browsers
         for (attr in arguments[i]) {
@@ -447,56 +446,65 @@ exports.extend = function() {
  * @param {Boolean} isBase64 true if the string content is encoded with base64.
  * @return {Promise} a promise in a format usable by JSZip.
  */
-exports.prepareContent = function(name, inputData, isBinary, isOptimizedBinaryString, isBase64) {
-
-    // if inputData is already a promise, this flatten it.
-    var promise = external.Promise.resolve(inputData).then(function(data) {
-
-
-        var isBlob = support.blob && (data instanceof Blob || ["[object File]", "[object Blob]"].indexOf(Object.prototype.toString.call(data)) !== -1);
-
-        if (isBlob && typeof FileReader !== "undefined") {
-            return new external.Promise(function (resolve, reject) {
-                var reader = new FileReader();
-
-                reader.onload = function(e) {
-                    resolve(e.target.result);
-                };
-                reader.onerror = function(e) {
-                    reject(e.target.error);
-                };
-                reader.readAsArrayBuffer(data);
-            });
-        } else {
-            return data;
+exports.prepareContent = function (name, inputData, isBinary, isOptimizedBinaryString, isBase64) {
+    let data = inputData;
+    var dataType = exports.getTypeOf(data);
+    if (!dataType) {
+        throw new Error("Can't read the data of '" + name + "'. Is it " +
+            "in a supported JavaScript type (String, Blob, ArrayBuffer, etc) ?");
+    }
+    // special case : it's way easier to work with Uint8Array than with ArrayBuffer
+    if (dataType === "arraybuffer") {
+        data = exports.transformTo("uint8array", data);
+    } else if (dataType === "string") {
+        if (isBase64) {
+            data = base64.decode(data);
         }
-    });
-
-    return promise.then(function(data) {
-        var dataType = exports.getTypeOf(data);
-
-        if (!dataType) {
-            return external.Promise.reject(
-                new Error("Can't read the data of '" + name + "'. Is it " +
-                          "in a supported JavaScript type (String, Blob, ArrayBuffer, etc) ?")
-            );
-        }
-        // special case : it's way easier to work with Uint8Array than with ArrayBuffer
-        if (dataType === "arraybuffer") {
-            data = exports.transformTo("uint8array", data);
-        } else if (dataType === "string") {
-            if (isBase64) {
-                data = base64.decode(data);
-            }
-            else if (isBinary) {
-                // optimizedBinaryString === true means that the file has already been filtered with a 0xFF mask
-                if (isOptimizedBinaryString !== true) {
-                    // this is a string, not in a base64 format.
-                    // Be sure that this is a correct "binary string"
-                    data = string2binary(data);
-                }
+        else if (isBinary) {
+            // optimizedBinaryString === true means that the file has already been filtered with a 0xFF mask
+            if (isOptimizedBinaryString !== true) {
+                // this is a string, not in a base64 format.
+                // Be sure that this is a correct "binary string"
+                data = string2binary(data);
             }
         }
-        return data;
-    });
+    }
+    return data;
+};
+
+
+exports.transformZipOutput = function (type, content, mimeType) {
+    switch (type) {
+        case "blob":
+            return utils.newBlob(exports.transformTo("arraybuffer", content), mimeType);
+        case "base64":
+            return base64.encode(content);
+        default:
+            return exports.transformTo(type, content);
+    }
+};
+
+
+exports.concat = function (type, dataArray) {
+    var i, index = 0, res = null, totalLength = 0;
+    for (i = 0; i < dataArray.length; i++) {
+        totalLength += dataArray[i].length;
+    }
+    switch (type) {
+        case "string":
+            return dataArray.join("");
+        case "array":
+            return Array.prototype.concat.apply([], dataArray);
+        case "uint8array":
+            res = new Uint8Array(totalLength);
+            for (i = 0; i < dataArray.length; i++) {
+                res.set(dataArray[i], index);
+                index += dataArray[i].length;
+            }
+            return res;
+        case "nodebuffer":
+            return Buffer.concat(dataArray);
+        default:
+            throw new Error("concat : unsupported type '" + type + "'");
+    }
 };

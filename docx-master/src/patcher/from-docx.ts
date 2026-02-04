@@ -26,22 +26,22 @@ export const PatchType = {
     PARAGRAPH: "paragraph",
 } as const;
 
-type ParagraphPatch = {
+export type ParagraphPatch = {
     readonly type: typeof PatchType.PARAGRAPH;
     readonly children: readonly ParagraphChild[];
 };
 
-type FilePatch = {
+export type FilePatch = {
     readonly type: typeof PatchType.DOCUMENT;
     readonly children: readonly FileChild[];
 };
 
-type IImageRelationshipAddition = {
+export type IImageRelationshipAddition = {
     readonly key: string;
     readonly mediaDatas: readonly IMediaData[];
 };
 
-type IHyperlinkRelationshipAddition = {
+export type IHyperlinkRelationshipAddition = {
     readonly key: string;
     readonly hyperlink: { readonly id: string; readonly link: string };
 };
@@ -55,18 +55,14 @@ export type PatchDocumentOptions<T extends PatchDocumentOutputType = PatchDocume
     readonly data: InputDataType;
     readonly patches: Readonly<Record<string, IPatch>>;
     readonly keepOriginalStyles?: boolean;
-    readonly placeholderDelimiters?: Readonly<{
-        readonly start: string;
-        readonly end: string;
-    }>;
     readonly recursive?: boolean;
 };
 
-const imageReplacer = new ImageReplacer();
-const UTF16LE = new Uint8Array([0xff, 0xfe]);
-const UTF16BE = new Uint8Array([0xfe, 0xff]);
+export const imageReplacer = new ImageReplacer();
+export const UTF16LE = new Uint8Array([0xff, 0xfe]);
+export const UTF16BE = new Uint8Array([0xfe, 0xff]);
 
-const compareByteArrays = (a: Uint8Array, b: Uint8Array): boolean => {
+export const compareByteArrays = (a: Uint8Array, b: Uint8Array): boolean => {
     if (a.length !== b.length) {
         return false;
     }
@@ -83,12 +79,14 @@ export const patchDocument = async <T extends PatchDocumentOutputType = PatchDoc
     data,
     patches,
     keepOriginalStyles,
-    placeholderDelimiters = { start: "{{", end: "}}" } as const,
     /**
      * Search for occurrences over patched document
      */
     recursive = true,
-}: PatchDocumentOptions<T>): Promise<OutputByType[T]> => {
+}: PatchDocumentOptions<T>,
+    beforeReplacementCallbacks: ((json: Element, context: IContext) => void)[] = [],
+    afterReplacementCallbacks: ((json: Element, context: IContext) => void)[] = [])
+    : Promise<OutputByType[T]> => {
     const zipContent = data instanceof JSZip ? data : await JSZip.loadAsync(data);
     const contexts = new Map<string, IContext>();
     const file = {
@@ -136,6 +134,9 @@ export const patchDocument = async <T extends PatchDocumentOutputType = PatchDoc
         }
 
         if (key.startsWith("word/") && !key.endsWith(".xml.rels")) {
+
+
+
             const context: IContext = {
                 file,
                 viewWrapper: {
@@ -161,14 +162,14 @@ export const patchDocument = async <T extends PatchDocumentOutputType = PatchDoc
             };
             contexts.set(key, context);
 
-            if (!placeholderDelimiters?.start.trim() || !placeholderDelimiters?.end.trim()) {
-                throw new Error("Both start and end delimiters must be non-empty strings.");
+            for (const cbk of beforeReplacementCallbacks) {
+                cbk(json, context);
             }
 
-            const { start, end } = placeholderDelimiters;
+
 
             for (const [patchKey, patchValue] of Object.entries(patches)) {
-                const patchText = `${start}${patchKey}${end}`;
+                const patchText = patchKey;
                 // TODO: mutates json. Make it immutable
                 // We need to loop through to catch every occurrence of the patch text
                 // It is possible that the patch text is in the same run
@@ -208,6 +209,10 @@ export const patchDocument = async <T extends PatchDocumentOutputType = PatchDoc
                         break;
                     }
                 }
+            }
+
+            for (const cbk of afterReplacementCallbacks) {
+                cbk(json, context);
             }
 
             const mediaDatas = imageReplacer.getMediaData(JSON.stringify(json), context.file.Media);
@@ -299,7 +304,7 @@ export const patchDocument = async <T extends PatchDocumentOutputType = PatchDoc
     });
 };
 
-const toXml = (jsonObj: Element): string => {
+export const toXml = (jsonObj: Element): string => {
     const output = js2xml(jsonObj, {
         attributeValueFn: (str) =>
             String(str)
@@ -312,7 +317,7 @@ const toXml = (jsonObj: Element): string => {
     return output;
 };
 
-const createRelationshipFile = (): Element => ({
+export const createRelationshipFile = (): Element => ({
     declaration: {
         attributes: {
             version: "1.0",

@@ -44,3 +44,25 @@ export const traverse = (node: Element): readonly IRenderedParagraphNode[] => {
 
 export const findLocationOfText = (node: Element, text: string): readonly IRenderedParagraphNode[] =>
     traverse(node).filter((p) => p.text.includes(text));
+
+export function findLocationOfUnderline(node: Element, minUnderlineLength: number = 2): readonly IRenderedParagraphNode[] {
+    if (minUnderlineLength < 1) {
+        throw new Error('minUnderlineLength < 1');
+    }
+
+    return traverse(node).filter((p) => {
+        for (let i = 0; i < p.text.length;) {
+            let underlineCount = 0;
+            while (i + underlineCount < p.text.length && p.text[i + underlineCount] === '_') {
+                underlineCount += 1;
+                if (underlineCount >= minUnderlineLength) {
+                    return true;
+                }
+            }
+
+            i += underlineCount === 0 ? 1 : underlineCount;
+        }
+    });
+}
+
+

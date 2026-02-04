@@ -1,80 +1,31 @@
 
-import JSZip from "../../jszip-main/dist";
+import JSZip from "jszip";
 
-import { Element, js2xml } from "xml-js";
+import { Element } from "xml-js";
 
-import { ImageReplacer } from "@export/packer/image-replacer";
 import { DocumentAttributeNamespaces } from "@file/document";
 import { IViewWrapper } from "@file/document-wrapper";
 import { File } from "@file/file";
-import { FileChild } from "@file/file-child";
-import { IMediaData, Media } from "@file/media";
-import { ParagraphChild, TextRun } from "@file/paragraph";
+import { Media } from "@file/media";
+import { TextRun } from "@file/paragraph";
 import { TargetModeType } from "@file/relationships/relationship/relationship";
 import { IContext } from "@file/xml-components";
-import { OutputByType, OutputType } from "@util/output-type";
+import { OutputByType } from "@util/output-type";
 
 import { appendContentType } from "./content-types-manager";
 import { appendRelationship, getNextRelationshipIndex } from "./relationship-manager";
-import { copyAppendRowsToTable, RegexReplacer, replacerByArray } from "./replacer";
 import { toJson } from "./util";
-import { patchDocument } from "./from-docx";
+import { compareByteArrays, createRelationshipFile, IHyperlinkRelationshipAddition, IImageRelationshipAddition, imageReplacer, InputDataType, IPatch, patchDocument, PatchDocumentOutputType, PatchType, toXml, UTF16BE, UTF16LE } from "./from-docx";
+import { arrayReplacer, copyAppendRowsToTable, IRowWithRepeat, underlineReplacer } from "./replacer";
 
 // eslint-disable-next-line functional/prefer-readonly-type
-type InputDataType = Buffer | string | number[] | Uint8Array | ArrayBuffer | Blob | NodeJS.ReadableStream;
-
-const PatchType = {
-    DOCUMENT: "file",
-    PARAGRAPH: "paragraph",
-} as const;
-
-type ParagraphPatch = {
-    readonly type: typeof PatchType.PARAGRAPH;
-    readonly children: readonly ParagraphChild[];
-};
-
-type FilePatch = {
-    readonly type: typeof PatchType.DOCUMENT;
-    readonly children: readonly FileChild[];
-};
-
-type IImageRelationshipAddition = {
-    readonly key: string;
-    readonly mediaDatas: readonly IMediaData[];
-
-};
-type IHyperlinkRelationshipAddition = {
-    readonly key: string;
-    readonly hyperlink: { readonly id: string; readonly link: string };
-};
-
-type IPatch = ParagraphPatch | FilePatch;
-
-type PatchDocumentOutputType = OutputType;
 
 export type RegexPatchDocumentOptions<T extends PatchDocumentOutputType = PatchDocumentOutputType> = {
     readonly outputType: T;
     readonly data: InputDataType;
     readonly patchGenerator: PatchGenerator;
     readonly keepOriginalStyles?: boolean;
-    readonly placeholderDelimiters: Readonly<{ regex: RegExp, regexReplacer: RegexReplacer }>;
-    readonly recursive?: boolean;
-};
-
-const imageReplacer = new ImageReplacer();
-const UTF16LE = new Uint8Array([0xff, 0xfe]);
-const UTF16BE = new Uint8Array([0xfe, 0xff]);
-
-const compareByteArrays = (a: Uint8Array, b: Uint8Array): boolean => {
-    if (a.length !== b.length) {
-        return false;
-    }
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) {
-            return false;
-        }
-    }
-    return true;
+    readonly recursion?: { is_recursive: false } | { is_recursive: true, max_recursion: number };
 };
 
 export const regexPatchDocument = async <T extends PatchDocumentOutputType = PatchDocumentOutputType>({
@@ -82,11 +33,10 @@ export const regexPatchDocument = async <T extends PatchDocumentOutputType = Pat
     data,
     patchGenerator,
     keepOriginalStyles,
-    placeholderDelimiters,
-    recursive = true,
+    recursion,
 }: RegexPatchDocumentOptions<T>): Promise<OutputByType[T]> => {
-    console.log("JSZip", JSZip);
-    const zipContent = await JSZip.loadAsync(data);
+    // console.log("JSZip", JSZip);
+    const zipContent = data instanceof JSZip ? data : await JSZip.loadAsync(data);
 
     const contexts = new Map<string, IContext>();
     const file = {
@@ -160,27 +110,23 @@ export const regexPatchDocument = async <T extends PatchDocumentOutputType = Pat
             contexts.set(key, context);
 
 
+            let recursionCount = 0;
+            while (true) {
 
-            const cycleMany = (regex: RegExp, regexReplacer: RegexReplacer, patchGenerator: PatchGenerator) => {
-                while (true) {
-                    const { didFindOccurrence } = regexReplacer.doReplace({
-                        json,
-                        patchGenerator,
-                        patchRegex: regex,
-                        context,
-                        keepOriginalStyles,
-                    });
-                    // What the reason doing that? Once document is patched - it search over patched json again, that takes too long if patched document has big and deep structure.
-                    if (!recursive || !didFindOccurrence) {
-                        break;
-                    }
+                const { didFindOccurrence } = underlineReplacer({
+                    json,
+                    patchGenerator,
+                    context,
+                    keepOriginalStyles,
+                    minUnderlineLength: 2,
+                });
+                // What the reason doing that? Once document is patched - it search over patched json again, that takes too long if patched document has big and deep structure.
+                if (!recursion?.is_recursive || recursionCount > recursion.max_recursion || !didFindOccurrence) {
+                    break;
                 }
-            };
 
-            cycleMany(
-                placeholderDelimiters.regex,
-                placeholderDelimiters.regexReplacer,
-                patchGenerator);
+                recursionCount += 1;
+            }
 
             const mediaDatas = imageReplacer.getMediaData(JSON.stringify(json), context.file.Media);
             if (mediaDatas.length > 0) {
@@ -272,46 +218,10 @@ export const regexPatchDocument = async <T extends PatchDocumentOutputType = Pat
     return res;
 };
 
-const toXml = (jsonObj: Element): string => {
-    const output = js2xml(jsonObj, {
-        attributeValueFn: (str) =>
-            String(str)
-                .replace(/&(?!amp;|lt;|gt;|quot;|apos;)/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&apos;"), // cspell:words apos
-    });
-    return output;
-};
-
-const createRelationshipFile = (): Element => ({
-    declaration: {
-        attributes: {
-            version: "1.0",
-            encoding: "UTF-8",
-            standalone: "yes",
-        },
-    },
-    elements: [
-        {
-            type: "element",
-            name: "Relationships",
-            attributes: {
-                xmlns: "http://schemas.openxmlformats.org/package/2006/relationships",
-            },
-            elements: [],
-        },
-    ],
-});
-
-
-
 export type PatchGeneratorReturnType = { patch: IPatch, parentTableElementRef: Element | null, parentRowElementRef: Element | null, patchString: string, sourceString: string };
 export class PatchGenerator {
 
     private i: number;
-
     public createdPatches: PatchGeneratorReturnType[];
 
     constructor() {
@@ -349,15 +259,13 @@ export type ProcessingTemplateResult = {
 export async function ITAM_processFileAndFindPlacesToReplace(blob: any): Promise<any> {
 
     try {
-        const regexReplacer = new RegexReplacer();
         const patchGenerator = new PatchGenerator();
         const outputBlob = await regexPatchDocument(
             {
                 outputType: "nodebuffer",
                 data: blob,
                 patchGenerator,
-                placeholderDelimiters: { regex: /_{2,}/g, regexReplacer },
-                recursive: true,
+                recursion: { is_recursive: true, max_recursion: 100 },
                 keepOriginalStyles: true,
             }
         );
@@ -387,6 +295,8 @@ export async function ITAM_processFileAndFindPlacesToReplace(blob: any): Promise
                     }
                     return { sourceString: t.sourceString, replacementString: t.patchString, isInsideRow: false };
                 }));
+
+        console.log(groups);
 
         return [outputBlob, patches];
     } catch (err) {
@@ -420,34 +330,29 @@ export async function ITAM_replaceTemplateFieldsInDocxAndGetOutputBuffer(patches
             }[];
 
         const appendRowsCallback = (json: Element, context: IContext): void => {
-
-            const groups = new Map<number, { replacementsLength: number, templateString: string }>();
+            const groups = new Map<number, IRowWithRepeat>();
             for (const { groupId, replacementsLength, templateString } of rowPatches) {
                 if (!groups.has(groupId)) {
-                    groups.set(groupId, { replacementsLength, templateString });
+                    groups.set(groupId, { timesToRepeatRow: replacementsLength, textWithinRow: templateString });
                 }
-                if (replacementsLength > groups.get(groupId)!.replacementsLength) {
-                    groups.set(groupId, { replacementsLength, templateString });
+                if (replacementsLength > groups.get(groupId)!.timesToRepeatRow) {
+                    groups.set(groupId, { timesToRepeatRow: replacementsLength, textWithinRow: templateString });
                 }
             }
 
-            for (const { replacementsLength, templateString } of groups.values()) {
-                copyAppendRowsToTable({ json, textWithinRow: templateString, rowsRepeatedCount: replacementsLength });
-            }
+            copyAppendRowsToTable({ json, rowsWithRepeats: [...groups.values()] });
         };
 
         const replaceRowDataCallback = (json: Element, context: IContext) => {
             const replacementCycle = (patchText: string, patchValues: IPatch[]) => {
-
                 const indexRef = { i: 0 };
                 while (true) {
-                    const { didFindOccurrence } = replacerByArray({
+                    const { didFindOccurrence } = arrayReplacer({
                         json,
                         patches: patchValues,
                         patchText: patchText,
                         context,
                         keepOriginalStyles: true,
-
                         indexRef,
                     });
                     // What the reason doing that? Once document is patched - it search over patched json again, that takes too long if patched document has big and deep structure.
@@ -470,7 +375,7 @@ export async function ITAM_replaceTemplateFieldsInDocxAndGetOutputBuffer(patches
             }
         }
         const output = await patchDocument(
-            { outputType: "blob", data: inputArrayBuffer, patches: notRowPatches, keepOriginalStyles: true, recursive: true },
+            { outputType: "nodebuffer", data: inputArrayBuffer, patches: notRowPatches, keepOriginalStyles: true, recursive: true },
             [appendRowsCallback, replaceRowDataCallback]);
         return output;
     }

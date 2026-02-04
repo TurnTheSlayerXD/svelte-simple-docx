@@ -1,5 +1,6 @@
 node_modules/
 dist-webpack/
+docxjs/
 docx-master/node_modules/
 docx-master/ooxml-schemas/
 docx-master/.github/
@@ -7,12 +8,11 @@ docx-master/.vscode/
 docx-master/demo/
 docx-master/logo/
 docx-master/scripts/
-docx-master/
-docxjs/
-jszip-main/.github/
-jszip-main/dist/
-jszip-main/docs/
-jszip-main/documentation/
-jszip-main/node_modules/
-jszip-main/test/
-jszip-main/vendor/
+docx-master/docs/
+docx-master/jszip-main/.github/
+docx-master/jszip-main/dist/
+docx-master/jszip-main/docs/
+docx-master/jszip-main/documentation/
+docx-master/jszip-main/node_modules/
+docx-master/jszip-main/test/
+docx-master/jszip-main/vendor/

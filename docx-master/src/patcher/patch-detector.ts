@@ -1,4 +1,5 @@
-import JSZip from "jszip";
+import JSZip from "../../jszip-main/dist";
+// import JSZip from "jszip";
 
 import { InputDataType } from "./from-docx";
 import { traverse } from "./traverser";

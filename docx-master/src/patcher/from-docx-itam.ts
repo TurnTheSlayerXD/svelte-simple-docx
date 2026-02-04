@@ -1,5 +1,6 @@
 
-import JSZip from "jszip";
+import JSZip from "../../jszip-main/dist";
+// import JSZip from "jszip";
 
 import { Element } from "xml-js";
 
@@ -329,7 +330,7 @@ export async function ITAM_replaceTemplateFieldsInDocxAndGetOutputBuffer(patches
                 replacements: string[];
             }[];
 
-        const appendRowsCallback = (json: Element, context: IContext): void => {
+        const appendRowsCallback = (json: Element): void => {
             const groups = new Map<number, IRowWithRepeat>();
             for (const { groupId, replacementsLength, templateString } of rowPatches) {
                 if (!groups.has(groupId)) {

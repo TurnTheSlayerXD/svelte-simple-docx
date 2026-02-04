@@ -1,3 +1,4 @@
+"use strict";
 // Берём CommonJS entry
 const JSZip = require("./index.js");
 

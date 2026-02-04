@@ -10,7 +10,7 @@ export default {
       sourcemap: true,
     },
     // {
-    //   file: "dist/jszip.cjs.js",
+    //   file: "dist/index.js",
     //   format: "cjs",
     //   exports: "default",
     //   sourcemap: true,

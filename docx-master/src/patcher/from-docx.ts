@@ -1,4 +1,5 @@
-import JSZip from "jszip";
+import JSZip from "../../jszip-main/dist";
+// import JSZip from "jszip";
 import { Element, js2xml } from "xml-js";
 
 import { ImageReplacer } from "@export/packer/image-replacer";

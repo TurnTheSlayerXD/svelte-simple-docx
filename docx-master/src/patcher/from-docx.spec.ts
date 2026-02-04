@@ -315,7 +315,6 @@ describe("from-docx", () => {
                 const output = await patchDocument({
                     outputType: "uint8array",
                     data: Buffer.from(""),
-                    placeholderDelimiters: { start: "{{", end: "}}" },
                     patches: {
                         name: {
                             type: PatchType.PARAGRAPH,
@@ -390,7 +389,6 @@ describe("from-docx", () => {
                         outputType: "uint8array",
                         data: Buffer.from(""),
                         patches: {},
-                        placeholderDelimiters: { start: "", end: "" },
                     }),
                 ).rejects.toThrow();
             });
@@ -401,7 +399,6 @@ describe("from-docx", () => {
                         outputType: "uint8array",
                         data: Buffer.from(""),
                         patches: {},
-                        placeholderDelimiters: { start: " ", end: " " },
                     }),
                 ).rejects.toThrowError();
             });

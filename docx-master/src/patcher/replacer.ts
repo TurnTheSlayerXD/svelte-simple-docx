@@ -228,7 +228,7 @@ export function copyAppendRowsToTable({ json, rowsWithRepeats }: { json: Element
             if (indexOfRow !== null && repeatToConsider !== null) {
                 const newRowElements = [];
                 for (let i = 0; i < repeatToConsider.timesToRepeatRow; ++i) {
-                    newRowElements.push(structuredClone(e.elements[indexOfRow]));
+                    newRowElements.push(JSON.parse(JSON.stringify(e.elements[indexOfRow])));
                 }
 
                 e.elements.splice(indexOfRow, 1, ...newRowElements);

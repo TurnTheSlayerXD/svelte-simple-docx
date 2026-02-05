@@ -262,7 +262,7 @@ export async function ITAM_processFileAndFindPlacesToReplace(blob: any): Promise
         const patchGenerator = new PatchGenerator();
         const outputBlob = regexPatchDocument(
             {
-                outputType: "uint8array",
+                outputType: "base64",
                 data: blob,
                 patchGenerator,
                 recursion: { is_recursive: true, max_recursion: 100 },
@@ -371,7 +371,7 @@ export function ITAM_replaceTemplateFieldsInDocxAndGetOutputBuffer(patches: Type
         }
     }
     const output = patchDocument(
-        { outputType: "nodebuffer", data: inputArrayBuffer, patches: notRowPatches, keepOriginalStyles: true, recursive: true },
+        { outputType: "base64", data: inputArrayBuffer, patches: notRowPatches, keepOriginalStyles: true, recursive: true },
         [appendRowsCallback, replaceRowDataCallback]);
     return output;
 }

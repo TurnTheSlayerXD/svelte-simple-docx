@@ -12,6 +12,7 @@
     "benchmark-browser": "node test/run.js --benchmark",
     "lint": "eslint ."
   },
+  "type": "module",
   "contributors": [
     {
       "name": "Franz Buchinger"

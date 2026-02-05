@@ -6,6 +6,10 @@ var utf8 = require("./utf8");
 var CompressedObject = require("./compressedObject");
 var GenericWorker = require("./stream/GenericWorker");
 
+var pako = require("pako");
+
+var utf8 = require("./utf8");
+
 var utils = require("./utils");
 /**
  * A simple object representing a file in the zip file.
@@ -31,6 +35,17 @@ var ZipObject = function (name, data, options) {
     };
 };
 
+function printRecursive(str) {
+    let worker = str._worker;
+
+    console.log("____________________________________________________");
+    while (worker) {
+        console.log("|\t", worker.name);
+        worker = worker.previous;
+    }
+    console.log("____________________________________________________");
+}
+
 ZipObject.prototype = {
     /**
      * Create an internal stream for the content of this object.
@@ -49,40 +64,10 @@ ZipObject.prototype = {
                 outputType = "string";
             }
 
-            // result = this._decompressWorkerSync();
             result = this._decompressWorker();
 
             var isUnicodeString = !this._dataBinary;
 
-            if (isUnicodeString && !askUnicodeString) {
-                result = result.pipe(new utf8.Utf8EncodeWorker());
-            }
-            if (!isUnicodeString && askUnicodeString) {
-                result = result.pipe(new utf8.Utf8DecodeWorker());
-            }
-        } catch (e) {
-            result = new GenericWorker("error");
-            result.error(e);
-        }
-
-        return new StreamHelper(result, outputType, "");
-    },
-
-    syncInternalStream: function (type) {
-        var result = null, outputType = "string";
-        try {
-            if (!type) {
-                throw new Error("No output type specified.");
-            }
-            outputType = type.toLowerCase();
-            var askUnicodeString = outputType === "string" || outputType === "text";
-            if (outputType === "binarystring" || outputType === "text") {
-                outputType = "string";
-            }
-
-            result = this._decompressWorkerSync();
-
-            var isUnicodeString = !this._dataBinary;
             if (isUnicodeString && !askUnicodeString) {
                 result = result.pipe(new utf8.Utf8EncodeWorker());
             }
@@ -103,15 +88,44 @@ ZipObject.prototype = {
      * @param {Function} onUpdate a function to call on each internal update.
      * @return Promise the promise of the result.
      */
-    async: function (type, onUpdate) {
-        return this.internalStream(type).accumulate(onUpdate);
+    async: async function (type, onUpdate) {
+        const streamHelper = this.internalStream(type);
+        // printRecursive(streamHelper);
+        const res = await streamHelper.accumulate(onUpdate);
+        return res;
     },
 
     sync: function (outType) {
-        const content = this._data.compressedContent;
-        const dataArray = utils.transformTo(outType, content);
-        const inputType = utils.getTypeOf(dataArray);
-        const result = utils.transformZipOutput(outType, utils.concat(utils.getTypeOf(dataArray), [dataArray]));
+        const askUnicodeString = outType === "string" || outType === "text";
+        if (outType === "binarystring" || outType === "text") {
+            outType = "string";
+        }
+
+        const isUnicodeString = !this._dataBinary;
+
+        let result = this._data.compressedContent;
+        console.log("this._data", this._data);
+
+        if (!result?.length) {
+            if (outType === "uint8array") {
+                return new Uint8Array([]);
+            }
+            else if (isUnicodeString) {
+                return "";
+            }
+        }
+
+        result = pako.inflateRaw(result, { raw: true });
+
+        if (isUnicodeString && !askUnicodeString) {
+            result = utf8.utf8encode(result);
+        }
+        if (!isUnicodeString && askUnicodeString) {
+            result = utf8.utf8decode(result);
+        }
+
+        result = utils.transformTo(outType, result);
+        result = utils.transformZipOutput(outType, utils.concat(utils.getTypeOf(result), [result]));
         return result;
     },
     /**

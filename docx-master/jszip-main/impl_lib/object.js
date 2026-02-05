@@ -9,7 +9,13 @@ var ZipObject = require("./zipObject");
 var generate = require("./generate");
 var nodejsUtils = require("./nodejsUtils");
 var NodejsStreamInputAdapter = require("./nodejs/NodejsStreamInputAdapter");
+var pako = require("pako");
 
+var signature = require("./signature");
+
+var crc32 = require("./crc32");
+
+var base64 = require("./base64");
 
 /**
  * Add a file in the current folder.
@@ -19,7 +25,7 @@ var NodejsStreamInputAdapter = require("./nodejs/NodejsStreamInputAdapter");
  * @param {Object} originalOptions the options of the file
  * @return {Object} the new file.
  */
-var fileAdd = function(name, data, originalOptions) {
+var fileAdd = function (name, data, originalOptions) {
     // be sure sub folders exist
     var dataType = utils.getTypeOf(data),
         parent;
@@ -120,7 +126,7 @@ var parentFolder = function (path) {
  * @param {String} path the path to check.
  * @return {String} the path with a trailing slash.
  */
-var forceTrailingSlash = function(path) {
+var forceTrailingSlash = function (path) {
     // Check the name ends with a /
     if (path.slice(-1) !== "/") {
         path += "/"; // IE doesn't like substr(-1)
@@ -136,7 +142,7 @@ var forceTrailingSlash = function(path) {
  *  folders. Defaults to false.
  * @return {Object} the new folder.
  */
-var folderAdd = function(name, createFolders) {
+var folderAdd = function (name, createFolders) {
     createFolders = (typeof createFolders !== "undefined") ? createFolders : defaults.createFolders;
 
     name = forceTrailingSlash(name);
@@ -166,7 +172,7 @@ var out = {
     /**
      * @see loadAsync
      */
-    load: function() {
+    load: function () {
         throw new Error("This method has been removed in JSZip 3.0, please check the upgrade guide.");
     },
 
@@ -177,7 +183,7 @@ var out = {
      * function (relativePath, file) {...}
      * It takes 2 arguments : the relative path and the file.
      */
-    forEach: function(cb) {
+    forEach: function (cb) {
         var filename, relativePath, file;
         // ignore warning about unwanted properties because this.files is a null prototype object
         /* eslint-disable-next-line guard-for-in */
@@ -197,7 +203,7 @@ var out = {
      * It takes 2 arguments : the relative path and the file.
      * @return {Array} An array of matching elements.
      */
-    filter: function(search) {
+    filter: function (search) {
         var result = [];
         this.forEach(function (relativePath, entry) {
             if (search(relativePath, entry)) { // the file matches the function
@@ -217,11 +223,11 @@ var out = {
      * @return  {JSZip|Object|Array} this JSZip object (when adding a file),
      * a file (when searching by string) or an array of files (when searching by regex).
      */
-    file: function(name, data, o) {
+    file: function (name, data, o) {
         if (arguments.length === 1) {
             if (isRegExp(name)) {
                 var regexp = name;
-                return this.filter(function(relativePath, file) {
+                return this.filter(function (relativePath, file) {
                     return !file.dir && regexp.test(relativePath);
                 });
             }
@@ -246,13 +252,13 @@ var out = {
      * @param   {String|RegExp} arg The name of the directory to add, or a regex to search folders.
      * @return  {JSZip} an object with the new directory as the root, or an array containing matching folders.
      */
-    folder: function(arg) {
+    folder: function (arg) {
         if (!arg) {
             return this;
         }
 
         if (isRegExp(arg)) {
-            return this.filter(function(relativePath, file) {
+            return this.filter(function (relativePath, file) {
                 return file.dir && arg.test(relativePath);
             });
         }
@@ -272,7 +278,7 @@ var out = {
      * @param {string} name the name of the file to delete
      * @return {JSZip} this JSZip object
      */
-    remove: function(name) {
+    remove: function (name) {
         name = this.root + name;
         var file = this.files[name];
         if (!file) {
@@ -288,7 +294,7 @@ var out = {
             delete this.files[name];
         } else {
             // maybe a folder, delete recursively
-            var kids = this.filter(function(relativePath, file) {
+            var kids = this.filter(function (relativePath, file) {
                 return file.name.slice(0, name.length) === name;
             });
             for (var i = 0; i < kids.length; i++) {
@@ -302,7 +308,7 @@ var out = {
     /**
      * @deprecated This method has been removed in JSZip 3.0, please check the upgrade guide.
      */
-    generate: function() {
+    generate: function () {
         throw new Error("This method has been removed in JSZip 3.0, please check the upgrade guide.");
     },
 
@@ -313,13 +319,13 @@ var out = {
      * - type, "base64" by default. Values are : string, base64, uint8array, arraybuffer, blob.
      * @return {StreamHelper} the streamed zip file.
      */
-    generateInternalStream: function(options) {
+    generateInternalStream: function (options) {
         var worker, opts = {};
         try {
             opts = utils.extend(options || {}, {
                 streamFiles: false,
                 compression: "STORE",
-                compressionOptions : null,
+                compressionOptions: null,
                 type: "",
                 platform: "DOS",
                 comment: null,
@@ -331,7 +337,7 @@ var out = {
             opts.compression = opts.compression.toUpperCase();
 
             // "binarystring" is preferred but the internals use "string".
-            if(opts.type === "binarystring") {
+            if (opts.type === "binarystring") {
                 opts.type = "string";
             }
 
@@ -342,7 +348,7 @@ var out = {
             utils.checkSupport(opts.type);
 
             // accept nodejs `process.platform`
-            if(
+            if (
                 opts.platform === "darwin" ||
                 opts.platform === "freebsd" ||
                 opts.platform === "linux" ||
@@ -366,19 +372,273 @@ var out = {
      * Generate the complete zip file asynchronously.
      * @see generateInternalStream
      */
-    generateAsync: function(options, onUpdate) {
-        return this.generateInternalStream(options).accumulate(onUpdate);
+    generateAsync: async function (options, onUpdate) {
+        const stream = this.generateInternalStream(options);
+        printRecursive(stream);
+        return await stream.accumulate(onUpdate);
     },
     /**
      * Generate the complete zip file asynchronously.
      * @see generateInternalStream
      */
-    generateNodeStream: function(options, onUpdate) {
+    generateNodeStream: function (options, onUpdate) {
         options = options || {};
         if (!options.type) {
             options.type = "nodebuffer";
         }
         return this.generateInternalStream(options).toNodejsStream(onUpdate);
-    }
+    },
+    generateSync: function (options, onUpdate) {
+        var opts = utils.extend(options || {}, {
+            streamFiles: false,
+            compression: "STORE",
+            compressionOptions: null,
+            type: "",
+            platform: "DOS",
+            comment: null,
+            mimeType: "application/zip",
+            encodeFileName: utf8.utf8encode
+        });
+
+        opts.type = (opts.type || "").toLowerCase();
+        opts.compression = (opts.compression || "STORE").toUpperCase();
+
+        if (opts.type === "binarystring") {
+            opts.type = "string";
+        }
+        if (!opts.type) {
+            throw new Error("No output type specified.");
+        }
+        utils.checkSupport(opts.type);
+
+        if (
+            opts.platform === "darwin" ||
+            opts.platform === "freebsd" ||
+            opts.platform === "linux" ||
+            opts.platform === "sunos"
+        ) {
+            opts.platform = "UNIX";
+        }
+        if (opts.platform === "win32") {
+            opts.platform = "DOS";
+        }
+
+        var zipComment = opts.comment || this.comment || "";
+
+
+        function decToHex(dec, bytes) {
+            var hex = "", i;
+            for (i = 0; i < bytes; i++) {
+                hex += String.fromCharCode(dec & 0xff);
+                dec = dec >>> 8;
+            }
+            return hex;
+        }
+
+        function generateCentralDirectoryEnd(entriesCount, centralDirLength, localDirLength, comment, encodeFileName) {
+            var encodedComment = utils.transformTo("string", encodeFileName(comment || ""));
+            return signature.CENTRAL_DIRECTORY_END +
+                "\x00\x00" +
+                "\x00\x00" +
+                decToHex(entriesCount, 2) +
+                decToHex(entriesCount, 2) +
+                decToHex(centralDirLength, 4) +
+                decToHex(localDirLength, 4) +
+                decToHex(encodedComment.length, 2) +
+                encodedComment;
+        }
+
+        function transformZipOutput(type, content, mimeType) {
+            switch (type) {
+                case "blob":
+                    return utils.newBlob(utils.transformTo("arraybuffer", content), mimeType);
+                case "base64":
+                    return base64.encode(content);
+                default:
+                    return utils.transformTo(type, content);
+            }
+        }
+
+        function toBinaryString(data) {
+            if (data === undefined || data === null) {
+                return "";
+            }
+            if (typeof data === "string") {
+                return data;
+            }
+            return utils.transformTo("string", data);
+        }
+
+        function getCompressionName(file) {
+            return (file.options && file.options.compression) || opts.compression;
+        }
+
+        // raw (uncompressed) bytes as Uint8Array
+        function getUncompressedU8(file) {
+            if (file.dir) {
+                return new Uint8Array(0);
+            }
+
+            // Если это CompressedObject — распаковываем аккуратно по magic
+            if (typeof CompressedObject !== "undefined" && file._data instanceof CompressedObject) {
+                var magic = file._data.compression && file._data.compression.magic;
+                var cc = file._data.compressedContent;
+
+                // STORE: данные уже “как есть”
+                if (magic === "\x00\x00") {
+                    return utils.transformTo("uint8array", cc);
+                }
+
+                // DEFLATE: raw inflate
+                // (в вашей сборке ZipObject.sync делает inflateRaw всегда,
+                //  но тут сделаем безопаснее)
+                if (magic === "\x08\x00") {
+                    var inflated = pako.inflateRaw(cc, { raw: true });
+                    return utils.transformTo("uint8array", inflated);
+                }
+
+                // неизвестное magic — без стримов не разрулить корректно
+                throw new Error("generateSync: unsupported CompressedObject compression magic: " + utils.pretty(magic || ""));
+            }
+
+            // иначе _data — исходный контент
+            var d = file._data;
+
+            if (typeof d === "string") {
+                // если строка не бинарная — кодируем в UTF-8 байты
+                if (!file._dataBinary) {
+                    return utils.transformTo("uint8array", utf8.utf8encode(d));
+                }
+                // бинарная строка
+                return utils.transformTo("uint8array", d);
+            }
+
+            return utils.transformTo("uint8array", d);
+        }
+
+        function compressU8(u8, compressionName, compressionOptions) {
+            if (!u8 || u8.length === 0) {
+                return new Uint8Array(0);
+            }
+
+            compressionName = (compressionName || "STORE").toUpperCase();
+
+            if (compressionName === "STORE") {
+                return u8;
+            }
+
+            if (compressionName === "DEFLATE") {
+                var level = (compressionOptions && typeof compressionOptions.level === "number")
+                    ? compressionOptions.level
+                    : -1;
+
+                var res = pako.deflateRaw(u8, { raw: true, level: level });
+                return utils.transformTo("uint8array", res);
+            }
+
+            throw new Error("generateSync: unsupported compression for sync mode: " + compressionName);
+        }
+
+        // --- сборка ---
+        var parts = [];
+        var dirRecords = [];
+        var bytesWritten = 0;
+
+        var entriesCount = 0;
+        this.forEach(function () { entriesCount++; });
+
+        var processed = 0;
+
+        this.forEach(function (relativePath, file) {
+            processed++;
+
+            var dir = !!file.dir;
+            var date = file.date || new Date();
+
+            var compressionName = getCompressionName(file);
+            var compression = generate.getCompression(file.options && file.options.compression, opts.compression);
+            var compressionOptions = (file.options && file.options.compressionOptions) || opts.compressionOptions || {};
+
+            // 1) uncompressed bytes
+            var uncompressedU8 = getUncompressedU8(file);
+
+            // 2) crc32 по binary-string представлению байт
+            var uncompressedBinStr = toBinaryString(uncompressedU8);
+            var uncompressedSize = dir ? 0 : uncompressedU8.length;
+            var fileCrc32 = dir ? 0 : crc32(uncompressedBinStr);
+
+            // 3) compress
+            var compressedU8 = dir ? new Uint8Array(0) : compressU8(uncompressedU8, compressionName, compressionOptions);
+            var compressedBinStr = toBinaryString(compressedU8);
+            var compressedSize = dir ? 0 : compressedU8.length;
+
+            // 4) headers через generateZipParts
+            var streamInfo = {
+                file: {
+                    name: relativePath,
+                    dir: dir,
+                    date: date,
+                    comment: (file.comment || ""),
+                    unixPermissions: file.unixPermissions,
+                    dosPermissions: file.dosPermissions
+                },
+                compression: compression,
+                crc32: fileCrc32,
+                compressedSize: compressedSize,
+                uncompressedSize: uncompressedSize
+            };
+
+            var record = generate.generateZipParts(
+                streamInfo,
+                false,
+                true,
+                bytesWritten,
+                opts.platform,
+                opts.encodeFileName
+            );
+
+            parts.push(record.fileRecord);
+            bytesWritten += record.fileRecord.length;
+
+            if (!dir) {
+                parts.push(compressedBinStr);
+                bytesWritten += compressedBinStr.length;
+            }
+
+            dirRecords.push(record.dirRecord);
+
+            if (typeof onUpdate === "function") {
+                onUpdate({
+                    currentFile: relativePath,
+                    percent: entriesCount ? (processed * 100) / entriesCount : 100
+                });
+            }
+        }.bind(this));
+
+        // central directory
+        var localDirLength = bytesWritten;
+
+        for (var i = 0; i < dirRecords.length; i++) {
+            parts.push(dirRecords[i]);
+            bytesWritten += dirRecords[i].length;
+        }
+
+        var centralDirLength = bytesWritten - localDirLength;
+        parts.push(generateCentralDirectoryEnd(dirRecords.length, centralDirLength, localDirLength, zipComment, opts.encodeFileName));
+
+        var finalBinaryString = parts.join("");
+        return transformZipOutput(opts.type, finalBinaryString, opts.mimeType);
+    },
+
+
 };
 module.exports = out;
+
+
+function printRecursive(str) {
+    let worker = str._worker;
+    while (worker) {
+        console.log(worker.name);
+        worker = worker.previous;
+    }
+}

@@ -4,7 +4,7 @@ var support = require("./support");
 var base64 = require("./base64");
 var nodejsUtils = require("./nodejsUtils");
 var external = require("./external");
-require("setimmediate");
+// require("setimmediate");
 
 
 /**
@@ -401,10 +401,14 @@ exports.pretty = function (str) {
  * @param {Function} callback the function to call asynchronously.
  * @param {Array} args the arguments to give to the callback.
  */
+// exports.delay = function (callback, args, self) {
+// setImmediate(function () {
+// callback.apply(self || null, args || []);
+// });
+// };
+
 exports.delay = function (callback, args, self) {
-    setImmediate(function () {
-        callback.apply(self || null, args || []);
-    });
+    return callback.apply(self || null, args || []);
 };
 
 /**

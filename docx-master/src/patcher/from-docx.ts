@@ -75,7 +75,7 @@ export const compareByteArrays = (a: Uint8Array, b: Uint8Array): boolean => {
     return true;
 };
 
-export const patchDocument = async <T extends PatchDocumentOutputType = PatchDocumentOutputType>({
+export const patchDocument = <T extends PatchDocumentOutputType = PatchDocumentOutputType>({
     outputType,
     data,
     patches,
@@ -87,8 +87,8 @@ export const patchDocument = async <T extends PatchDocumentOutputType = PatchDoc
 }: PatchDocumentOptions<T>,
     beforeReplacementCallbacks: ((json: Element, context: IContext) => void)[] = [],
     afterReplacementCallbacks: ((json: Element, context: IContext) => void)[] = [])
-    : Promise<OutputByType[T]> => {
-    const zipContent = data instanceof JSZip ? data : await JSZip.loadAsync(data);
+    : OutputByType[T] => {
+    const zipContent = data instanceof JSZip ? data : JSZip.loadAsync(data);
     const contexts = new Map<string, IContext>();
     const file = {
         Media: new Media(),
@@ -105,7 +105,9 @@ export const patchDocument = async <T extends PatchDocumentOutputType = PatchDoc
     const binaryContentMap = new Map<string, Uint8Array>();
 
     for (const [key, value] of Object.entries(zipContent.files)) {
-        const binaryValue = await value.async("uint8array");
+
+        const binaryValue = value.sync("uint8array");
+        
         const startBytes = binaryValue.slice(0, 2);
         if (compareByteArrays(startBytes, UTF16LE) || compareByteArrays(startBytes, UTF16BE)) {
             binaryContentMap.set(key, binaryValue);
@@ -117,7 +119,7 @@ export const patchDocument = async <T extends PatchDocumentOutputType = PatchDoc
             continue;
         }
 
-        const json = toJson(await value.async("text"));
+        const json = toJson(value.sync("text"));
 
         if (key === "word/document.xml") {
             const document = json.elements?.find((i) => i.name === "w:document");
@@ -298,7 +300,7 @@ export const patchDocument = async <T extends PatchDocumentOutputType = PatchDoc
         zip.file(`word/media/${fileName}`, stream);
     }
 
-    return zip.generateAsync({
+    return zip.generateSync({
         type: outputType,
         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         compression: "DEFLATE",

@@ -76,6 +76,8 @@ DataWorker.prototype._tickAndRepeat = function() {
     }
 };
 
+
+
 /**
  * Read and push a chunk.
  */

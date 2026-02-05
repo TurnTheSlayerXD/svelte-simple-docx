@@ -1,7 +1,7 @@
 "use strict";
 
 var compressions = require("../compressions");
-var ZipFileWorker = require("./ZipFileWorker");
+var zipWorker = require("./ZipFileWorker");
 
 /**
  * Find the compression to use.
@@ -19,6 +19,10 @@ var getCompression = function (fileCompression, zipCompression) {
     return compression;
 };
 
+exports.getCompression = getCompression;
+
+exports.ZipFileWorker = zipWorker.ZipFileWorker;
+exports.generateZipParts = zipWorker.generateZipParts;
 /**
  * Create a worker to generate a zip file.
  * @param {JSZip} zip the JSZip instance at the right root level.
@@ -27,7 +31,7 @@ var getCompression = function (fileCompression, zipCompression) {
  */
 exports.generateWorker = function (zip, options, comment) {
 
-    var zipFileWorker = new ZipFileWorker(options.streamFiles, comment, options.platform, options.encodeFileName);
+    var zipFileWorker = new zipWorker.ZipFileWorker(options.streamFiles, comment, options.platform, options.encodeFileName);
     var entriesCount = 0;
     try {
 
@@ -39,17 +43,19 @@ exports.generateWorker = function (zip, options, comment) {
 
             file._compressWorker(compression, compressionOptions)
                 .withStreamInfo("file", {
-                    name : relativePath,
-                    dir : dir,
-                    date : date,
-                    comment : file.comment || "",
-                    unixPermissions : file.unixPermissions,
-                    dosPermissions : file.dosPermissions
+                    name: relativePath,
+                    dir: dir,
+                    date: date,
+                    comment: file.comment || "",
+                    unixPermissions: file.unixPermissions,
+                    dosPermissions: file.dosPermissions
                 })
                 .pipe(zipFileWorker);
         });
         zipFileWorker.entriesCount = entriesCount;
     } catch (e) {
+
+        throw e;
         zipFileWorker.error(e);
     }
 

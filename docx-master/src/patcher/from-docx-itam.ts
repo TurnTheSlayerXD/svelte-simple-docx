@@ -29,13 +29,13 @@ export type RegexPatchDocumentOptions<T extends PatchDocumentOutputType = PatchD
     readonly recursion?: { is_recursive: false } | { is_recursive: true, max_recursion: number };
 };
 
-export const regexPatchDocument = async <T extends PatchDocumentOutputType = PatchDocumentOutputType>({
+export const regexPatchDocument = <T extends PatchDocumentOutputType = PatchDocumentOutputType>({
     outputType,
     data,
     patchGenerator,
     keepOriginalStyles,
     recursion,
-}: RegexPatchDocumentOptions<T>): Promise<OutputByType[T]> => {
+}: RegexPatchDocumentOptions<T>): OutputByType[T] => {
     const zipContent = data instanceof JSZip ? data : JSZip.loadAsync(data);
     const contexts = new Map<string, IContext>();
     const file = {
@@ -44,18 +44,17 @@ export const regexPatchDocument = async <T extends PatchDocumentOutputType = Pat
 
     const map = new Map<string, Element>();
 
-    // eslint-disable-next-line functional/prefer-readonly-type
     const imageRelationshipAdditions: IImageRelationshipAddition[] = [];
-    // eslint-disable-next-line functional/prefer-readonly-type
+
     const hyperlinkRelationshipAdditions: IHyperlinkRelationshipAddition[] = [];
+
     let hasMedia = false;
 
     const binaryContentMap = new Map<string, Uint8Array>();
 
-    // ss.info('binaryContentMap');
 
     for (const [key, value] of Object.entries(zipContent.files)) {
-        const binaryValue = value.sync("nodebuffer");
+        const binaryValue = value.sync("uint8array");
         const startBytes = binaryValue.slice(0, 2);
         if (compareByteArrays(startBytes, UTF16LE) || compareByteArrays(startBytes, UTF16BE)) {
             binaryContentMap.set(key, binaryValue);
@@ -66,7 +65,8 @@ export const regexPatchDocument = async <T extends PatchDocumentOutputType = Pat
             binaryContentMap.set(key, binaryValue);
             continue;
         }
-        const json = toJson(await value.async("text"));
+
+        const json = toJson(value.sync("string"));
 
         if (key === "word/document.xml") {
             const document = json.elements?.find((i) => i.name === "w:document");
@@ -84,8 +84,6 @@ export const regexPatchDocument = async <T extends PatchDocumentOutputType = Pat
         }
 
         if (key.startsWith("word/") && !key.endsWith(".xml.rels")) {
-
-            console.log("REached word");
             const context: IContext = {
                 file,
                 viewWrapper: {
@@ -211,13 +209,13 @@ export const regexPatchDocument = async <T extends PatchDocumentOutputType = Pat
         zip.file(`word/media/${fileName}`, stream);
     }
 
-    const res = await zip.generateAsync({
+    const resSync = zip.generateSync({
         type: outputType,
         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         compression: "DEFLATE",
     });
 
-    return res;
+    return resSync;
 };
 
 export type PatchGeneratorReturnType = { patch: IPatch, parentTableElementRef: Element | null, parentRowElementRef: Element | null, patchString: string, sourceString: string };
@@ -260,12 +258,11 @@ export type ProcessingTemplateResult = {
 
 export async function ITAM_processFileAndFindPlacesToReplace(blob: any): Promise<any> {
 
-
     try {
         const patchGenerator = new PatchGenerator();
-        const outputBlob = await regexPatchDocument(
+        const outputBlob = regexPatchDocument(
             {
-                outputType: "base64",
+                outputType: "uint8array",
                 data: blob,
                 patchGenerator,
                 recursion: { is_recursive: true, max_recursion: 100 },
@@ -310,7 +307,7 @@ export type TypeToReplaceTemplates = {
     { isRowData: false, replacementString: string } | { isRowData: true, replacements: string[], rowGroupId: number }
 };
 
-export async function ITAM_replaceTemplateFieldsInDocxAndGetOutputBuffer(patches: TypeToReplaceTemplates[], inputArrayBuffer: any): Promise<any> {
+export function ITAM_replaceTemplateFieldsInDocxAndGetOutputBuffer(patches: TypeToReplaceTemplates[], inputArrayBuffer: any): any {
 
     const rowPatches = patches
         .map(t => t.replacementData.isRowData ?
@@ -373,7 +370,7 @@ export async function ITAM_replaceTemplateFieldsInDocxAndGetOutputBuffer(patches
             notRowPatches[p.templateString] = { type: PatchType.PARAGRAPH, children: [new TextRun(p.replacementData.replacementString)] };
         }
     }
-    const output = await patchDocument(
+    const output = patchDocument(
         { outputType: "nodebuffer", data: inputArrayBuffer, patches: notRowPatches, keepOriginalStyles: true, recursive: true },
         [appendRowsCallback, replaceRowDataCallback]);
     return output;

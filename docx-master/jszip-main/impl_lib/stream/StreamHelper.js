@@ -111,6 +111,57 @@ function accumulate(helper, updateCallback) {
     });
 }
 
+// function accumulateSync(helper, updateCallback) {
+//     const chunkType = helper._internalType,
+//         resultType = helper._outputType,
+//         mimeType = helper._mimeType;
+
+//     let dataArray = [];
+
+//     const result = { buf: null };
+
+
+//     let endReached = false;
+//     helper = helper
+//         .on("data", function (data, meta) {
+//             dataArray.push(data);
+//             if (updateCallback) {
+//                 updateCallback(meta);
+//             }
+//         })
+//         .on("error", function (err) {
+//             dataArray = [];
+//         })
+//         .on("end", function () {
+//             try {
+//                 endReached = true;
+//                 console.log("END REACHED");
+//                 result.buf = transformZipOutput(resultType, concat(chunkType, dataArray), mimeType);
+//                 console.log("!!!RESULT = ", result.buf);
+//                 return result.buf;
+//             } catch (e) {
+//                 console.error("accumulateSync", e.stack);
+//             }
+//             dataArray = [];
+//         });
+
+//     while (helper.resumeWithRet()) {
+//         console.log("resuming");
+
+
+//     }
+//     // while (!endReached) {
+//     // console.log("");
+//     // }
+
+//     console.log("RESULT BEFORE UNDEFINED CHECK", result.buf);
+//     // if (!result.buf) {
+//     // throw new Error("accumulateSync result undefined");
+//     // }
+
+//     return result.buf;
+// }
+
 /**
  * An helper to easily use workers outside of JSZip.
  * @constructor
@@ -158,6 +209,7 @@ StreamHelper.prototype = {
     accumulate: function (updateCb) {
         return accumulate(this, updateCb);
     },
+
     /**
      * Add a listener on an event triggered on a stream.
      * @param {String} evt the name of the event
@@ -166,7 +218,6 @@ StreamHelper.prototype = {
      */
     on: function (evt, fn) {
         var self = this;
-
         if (evt === "data") {
             this._worker.on(evt, function (chunk) {
                 fn.call(self, chunk.data, chunk.meta);
@@ -178,14 +229,31 @@ StreamHelper.prototype = {
         }
         return this;
     },
+
+    // onSync: function (evt, fn) {
+    // var self = this;
+    // if (evt === "data") {
+    // this._worker.on(evt, function (chunk) {
+    // fn.call(self, chunk.data, chunk.meta);
+    // });
+    // } else {
+    // this._worker.on(evt, function () {
+    // fn.apply(self, arguments || []);
+    // });
+    // }
+    // return this;
+    // },
+
     /**
      * Resume the flow of chunks.
-     * @return {StreamHelper} the current helper.
+     * @r
+     * eturn {StreamHelper} the current helper.
      */
     resume: function () {
-        utils.delay(this._worker.resume, [], this._worker);
+        let isResumed = utils.delay(this._worker.resume, [], this._worker);
         return this;
     },
+
     /**
      * Pause the flow of chunks.
      * @return {StreamHelper} the current helper.

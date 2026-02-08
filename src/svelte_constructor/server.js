@@ -28,8 +28,8 @@ else if (input.action === 'fetchItamTaskTypes') {
     data.tableTypes = JSON.stringify(fetchItamTaskTypes());
 }
 else if (input.action === "createDocxTemplate") {
-    const { docxBase64, selectTaskField, templateToRealValue, detectedTables } = input;
-    const resultJSON = JSON.stringify({ selectTaskField, templateToRealValue, detectedTables });
+    const { docxBase64, selectTaskField, templateToRealValue } = input;
+    const resultJSON = JSON.stringify({ selectTaskField, templateToRealValue });
 
     const docxTemplateSr = new SimpleRecord('itam_task_docx_template');
     docxTemplateSr.setValue('task_table_id', selectTaskField.sys_id);
@@ -87,11 +87,11 @@ else if (input.action === 'getExistingDocxTemplateRecords') {
 }
 
 else if (input.action === 'updateExistingDocxTemplateRecord') {
-    const { docxTemplateSysId, selectTaskField, templateToRealValue, detectedTables } = input;
+    const { docxTemplateSysId, selectTaskField, templateToRealValue } = input;
     if (!selectTaskField.sys_id) {
         return;
     }
-    const resultJSON = JSON.stringify({ selectTaskField, templateToRealValue, detectedTables });
+    const resultJSON = JSON.stringify({ selectTaskField, templateToRealValue });
     const docxTemplateSr = new SimpleRecord('itam_task_docx_template');
     docxTemplateSr.get(docxTemplateSysId);
     docxTemplateSr.setValue('task_table_id', selectTaskField.sys_id);
@@ -108,25 +108,6 @@ else if (input.action === 'fetchParentTableIds') {
     let { tableSysId } = input;
     data.parentTableIds = getParentTableIds(tableSysId);
 }
-
-else if (input.action === 'fetchRelatedListSysIds') {
-    let { tableSysId } = input;
-
-    const parentTableIds = getParentTableIds(tableSysId);
-    parentTableIds.unshift(tableSysId);
-
-    const relatedListArr = [];
-    const relatedListSr = new SimpleRecord('sys_ui_related_list');
-    relatedListSr.addQuery('table_id', 'in', parentTableIds);
-    relatedListSr.selectAttributes(['table_id']);
-    relatedListSr.query();
-    while (relatedListSr.next()) {
-        relatedListArr.push({ table_id: relatedListSr.getValue('table_id'), sys_id: relatedListSr.sys_id });
-    }
-
-    data.relatedLists = relatedListArr;
-}
-
 
 function getParentTableIds(tableSysId) {
     const parentTableIds = [];
@@ -164,87 +145,16 @@ function fetchItamTaskTypes() {
             title: tableSr.title,
             columns: [],
             scripts: [],
-            relatedTables: [],
         });
     }
 
-    const relatedListArr = [];
-    const relatedListSr = new SimpleRecord('sys_ui_related_list');
-    relatedListSr.addQuery('table_id', 'in', tableTypes.map(({ sys_id }) => sys_id));
-    relatedListSr.selectAttributes(['table_id']);
-    relatedListSr.query();
-    while (relatedListSr.next()) {
-        relatedListArr.push({ table_id: relatedListSr.getValue('table_id'), sys_id: relatedListSr.sys_id });
-    }
-
-    const relatedListElementSr = new SimpleRecord('sys_ui_related_list_element');
-    relatedListElementSr.addQuery('related_list_id', 'in', relatedListArr.map(({ sys_id }) => sys_id));
-    relatedListElementSr.selectAttributes(['title', 'related_list_id', 'related_table_id', 'related_list_script_id']);
-    relatedListElementSr.query();
-
-    const relatedTablesArr = [];
-
-    while (relatedListElementSr.next()) {
-        const { table_id } = relatedListArr.find(({ sys_id }) => sys_id === relatedListElementSr.getValue('related_list_id'));
-        const table = tableTypes.find(({ sys_id }) => sys_id === table_id);
-
-        if (relatedListElementSr.getValue('related_table_id')) {
-            const relatedTableRecord = {
-                sys_id: relatedListElementSr.getValue('related_table_id'),
-                name: relatedListElementSr.related_table_id.name,
-                title: relatedListElementSr.related_table_id.title,
-                columns: [],
-                scripts: [],
-                related_list_name: relatedListElementSr.title,
-                related_list_sys_id: relatedListElementSr.sys_id,
-                related_by_column: true,
-            };
-            table.relatedTables.push(relatedTableRecord);
-            relatedTablesArr.push(relatedTableRecord);
-        } else if (relatedListElementSr.getValue('related_list_script_id')) {
-            const { query_from } = relatedListElementSr.related_list_script_id;
-            const relatedTableRecord = {
-                sys_id: query_from.sys_id,
-                name: query_from.name,
-                title: query_from.title,
-                columns: [],
-                scripts: [],
-                related_list_name: relatedListElementSr.title,
-                related_list_sys_id: relatedListElementSr.sys_id,
-                related_by_script: true,
-            };
-            table.relatedTables.push(relatedTableRecord);
-            relatedTablesArr.push(relatedTableRecord);
-        }
-    }
-
-    const columnSr = new SimpleRecord('sys_db_column');
-    columnSr.addQuery('table_id', 'in', [...tableTypes.map(t => t.sys_id), ...relatedTablesArr.map(t => t.sys_id)]);
-    columnSr.addQuery('column_name', 'not in', ['sys_id']);
-    columnSr.selectAttributes(['column_name', 'title', 'table_id']);
-    columnSr.query();
-    while (columnSr.next()) {
-        const columnRecord = { sys_id: columnSr.sys_id, title: columnSr.title, name: columnSr.column_name };
-        const table = tableTypes.find(({ sys_id }) => sys_id === columnSr.getValue('table_id'));
-        if (table?.name === 'task') {
-            for (const tableIter of tableTypes) {
-                tableIter.columns.push(columnRecord);
-            }
-        }
-        else if (table) {
-            table.columns.push(columnRecord);
-        }
-        relatedTablesArr.filter(({ sys_id }) => sys_id === columnSr.getValue('table_id')).forEach(relatedTable => relatedTable.columns.push(columnRecord));
-    }
-
     const tableScriptSr = new SimpleRecord('itam_script_table_mapping');
-    tableScriptSr.addQuery('table_id', 'in', [...tableTypes.map(t => t.sys_id), ...relatedTablesArr.map(t => t.sys_id)]);
+    tableScriptSr.addQuery('table_id', 'in', tableTypes.map(t => t.sys_id));
     tableScriptSr.selectAttributes(['name', 'table_id']);
     tableScriptSr.query();
     while (tableScriptSr.next()) {
         const scriptRecord = { sys_id: tableScriptSr.sys_id, name: tableScriptSr.name, title: tableScriptSr.name };
         tableTypes.filter(t => t.sys_id === tableScriptSr.getValue('table_id')).forEach(table => table.scripts.push(scriptRecord));
-        relatedTablesArr.filter(relT => relT.sys_id === tableScriptSr.getValue('table_id')).forEach(relatedTable => relatedTable.scripts.push(scriptRecord));
     }
 
     return tableTypes;

@@ -57,6 +57,14 @@
 	}
 
 	const displayColumnNameCache = new Map();
+
+	async function getDisplayByRefColumnName() {
+		if (!displayColumnNameCache.has(table)) {
+			displayColumnNameCache.set(table, await fetchDisplayByRefColumnName(table));
+		}
+		return displayColumnNameCache.get(table);
+	}
+
 	async function getRecordsLikeDisplayValue(table, likeDisplayValue, staticCondition = '', displayByRefColumnName, otherColumnsToFetch) {
 		if (!displayColumnNameCache.has(table)) {
 			if (!!displayByRefColumnName) {
@@ -97,9 +105,83 @@
 	function sleepAsync(ms) {
 		return new Promise((resolve) => setTimeout(() => resolve(true), ms));
 	}
+	async function fetchRecordFields(table, sys_id) {
+		const response = await fetch(`/v1/preview/${table}/${sys_id}?form_view=Preview`, {
+			headers: {
+				Authorization: `Bearer ${s_user.accessToken}`
+			}
+		});
+		const { data } = await response.json();
+		const returnData = data.sections.flatMap((d) =>
+			d.elements
+				.filter((e) => !!e.column_id)
+				.map((e) => ({
+					title: e.name,
+					display_value: typeof e.value === 'object' && !!e.value ? e.value.display_value : e.value
+				}))
+		);
+		return returnData;
+	}
+
+	export const trackedOpenedInfoPopups = [];
+	function addInfoPopupToTrack(infoPopupRef) {
+		trackedOpenedInfoPopups.push(infoPopupRef);
+	}
+
+	function hideAllInfoPopups() {
+		for (const infoPopup of trackedOpenedInfoPopups) {
+			infoPopup.isVisible = false;
+		}
+	}
+
+	// left: 37, up: 38, right: 39, down: 40,
+	// spacebar: 32, pageup: 33, pagedown: 34, end: 35, home: 36
+	let keys = { 37: 1, 38: 1, 39: 1, 40: 1 };
+	function preventDefault(e) {
+		e.preventDefault();
+	}
+	function preventDefaultForScrollKeys(e) {
+		if (keys[e.keyCode]) {
+			preventDefault(e);
+			return false;
+		}
+	}
+	// modern Chrome requires { passive: false } when adding event
+	let supportsPassive = false;
+	try {
+		window.addEventListener(
+			'test',
+			null,
+			Object.defineProperty({}, 'passive', {
+				get: function () {
+					supportsPassive = true;
+				}
+			})
+		);
+	} catch (e) {}
+	let wheelOpt = supportsPassive ? { passive: false } : false;
+	let wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
+	// call this to Disable
+	export function disableScroll() {
+		window.addEventListener('DOMMouseScroll', preventDefault, false); // older FF
+		window.addEventListener(wheelEvent, preventDefault, wheelOpt); // modern desktop
+		window.addEventListener('touchmove', preventDefault, wheelOpt); // mobile
+		window.addEventListener('keydown', preventDefaultForScrollKeys, false);
+	}
+
+	// call this to Enable
+	export function enableScroll() {
+		window.removeEventListener('DOMMouseScroll', preventDefault, false);
+		window.removeEventListener(wheelEvent, preventDefault, wheelOpt);
+		window.removeEventListener('touchmove', preventDefault, wheelOpt);
+		window.removeEventListener('keydown', preventDefaultForScrollKeys, false);
+	}
 </script>
 
 <script>
+	import InfoPopup from './infoPopup.svelte';
+
+	import { disableScrollBar } from './scrollableHandling.svelte';
 	let {
 		table,
 		condition: staticCondition,
@@ -109,7 +191,7 @@
 		actionWhenValueSelected = () => console.log('not selected actionWhenValueSelected'),
 		actionWhenValueCleared = () => console.log('not selected actionWhenValueCleared'),
 		otherColumnsToFetch = [],
-		displayByRefColumnName = '',
+		displayByRefColumnName = ''
 	} = $props();
 
 	let searchValue = $state('');
@@ -122,17 +204,21 @@
 
 	let isRefButtonVisible = $derived(!isFieldFocused && !!currentValue.sys_id);
 
+	let forInfoPopupHook = $state();
+
 	let dictionaryWindow = {
 		instance: null,
 		isFindDictionary: false
 	};
+
+	const infoPopupParams = $state({ isVisible: false, recordFields: null, tableName: null, recordDisplayValue: null, sys_id: null, anchorHook: null });
+	addInfoPopupToTrack(infoPopupParams);
 
 	(() => {
 		if (currentValue.sys_id) {
 			fetchDisplayValue(table, currentValue.sys_id).then((display_value) => (currentValue.display_value = display_value));
 		}
 	})();
-	//
 
 	function onClickRowFromPopup(newValue) {
 		currentValue.sys_id = newValue.sys_id;
@@ -178,10 +264,24 @@
 		isFieldFocused = false;
 	}
 
-	function onClickRefButton(event) {
+	async function onClickRefButton(event) {
 		event.preventDefault();
 		event.stopPropagation();
-		console.log('NOT IMPLEMENTED');
+
+		let wasVisible = infoPopupParams.isVisible;
+		hideAllInfoPopups();
+
+		infoPopupParams.recordFields = await fetchRecordFields(table, currentValue.sys_id);
+		infoPopupParams.tableName = table;
+		infoPopupParams.recordDisplayValue = currentValue.display_value;
+		infoPopupParams.sys_id = currentValue.sys_id;
+		infoPopupParams.anchorHook = forInfoPopupHook;
+		infoPopupParams.isVisible = !wasVisible;
+
+		if (infoPopupParams.isVisible) {
+			// disableScroll();
+			disableScrollBar();
+		}
 	}
 
 	function onMiddleClickRefButton(event) {
@@ -300,6 +400,7 @@
 										type="button"
 										onclick={onClickRefButton}
 										onmousedown={onMiddleClickRefButton}
+										bind:this={forInfoPopupHook}
 										>{currentValue.display_value}
 									</button>
 								</div>
@@ -369,3 +470,13 @@
 		</div>
 	</div>
 </div>
+
+{#if infoPopupParams.isVisible}
+	<InfoPopup
+		sys_id={infoPopupParams.sys_id}
+		anchorHook={infoPopupParams.anchorHook}
+		recordDisplayValue={infoPopupParams.recordDisplayValue}
+		tableName={infoPopupParams.tableName}
+		recordFields={infoPopupParams.recordFields}
+	></InfoPopup>
+{/if}

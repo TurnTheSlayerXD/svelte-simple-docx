@@ -1,16 +1,3 @@
-<script module>
-	export function onWindowClickToClosePopup(e, popupBoxRef) {
-		let { target } = e;
-		while (target && !target.getAttribute('dropdown')) {
-			target = target.parentElement;
-		}
-
-		if (!target) {
-			popupBoxRef.isPopupOpened = false;
-		}
-	}
-</script>
-
 <script>
 	let { popupBoxRef = $bindable() } = $props();
 </script>
@@ -24,10 +11,10 @@
 	style:display={popupBoxRef.isPopupOpened ? 'initial' : 'none'}
 >
 	{#each popupBoxRef.dataArrRef as row}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div
-			class="src-components-customselect-___styles-module__menu___XQSV5"
+			class="src-components-customselect-___styles-module__menu___XQSV5 hover-item"
 			onclick={() => {
 				popupBoxRef.onClickRowFromPopup(row);
 				popupBoxRef.isPopupOpened = false;
@@ -45,5 +32,12 @@
 		max-height: 500px;
 		overflow-y: scroll;
 		position: absolute;
+	}
+
+	.hover-item {
+	}
+
+	.hover-item:hover {
+		background-color: #f2f2f2;
 	}
 </style>

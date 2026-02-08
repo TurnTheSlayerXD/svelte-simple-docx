@@ -16,7 +16,7 @@ export function setPreviewedDocxField(renderRootId, field) {
     let wasAlreadyReplaced = true;
     if (!field.previewField) {
         wasAlreadyReplaced = false;
-        field.previewField = getPreviewObjectFromFieldTemplate(renderRootId, field.templateStr);
+        field.previewField = getPreviewObjectFromFieldTemplate(renderRootId, field.templateString);
     }
 
     const { previewField: previewHook } = field;
@@ -40,40 +40,31 @@ export function setPreviewedDocxField(renderRootId, field) {
     }
 
     if (hasMappedValue) {
-
-        previewHook.insertAdjacentHTML('afterbegin',
-            `
-                <button
-                    style=" max-width: ${previewHookWidth}px; 
-                        max-height: ${previewHookHeight + 3}px; 
-                        display: inline;
-                        white-space: nowrap;
-                        position: unset;"
-                    class="src-components-button-___styles-module__Icon___gxSRu src-components-dynamicForms-view-field-reference-___styles-module__Badge___In6nV"
-                    type="button"
-                    onclick="window.onPreviewInputFocus('${field.templateStr}');">
-                        ${field.dbMappedColumn.display_value}
-                </button>
-            `
-        );
+        const newButtonElement = document.createElement('button');
+        newButtonElement.style.maxWidth = previewHookWidth + 'px';
+        newButtonElement.style.maxHeight = (previewHookHeight + 3) + 'px';
+        newButtonElement.style.display = 'inline';
+        newButtonElement.style.whiteSpace = 'nowrap';
+        newButtonElement.style.position = 'unset';
+        newButtonElement.classList.add('src-components-button-___styles-module__Icon___gxSRu');
+        newButtonElement.classList.add('src-components-dynamicForms-view-field-reference-___styles-module__Badge___In6nV');
+        newButtonElement.type = 'button';
+        newButtonElement.onclick = () => {
+            window.onPreviewInputFocus(field);
+        };
+        newButtonElement.insertAdjacentText('afterbegin', field.dbMappedColumn.display_value);
+        previewHook.insertAdjacentElement('afterbegin', newButtonElement);
     } else {
-        previewHook.insertAdjacentHTML('afterbegin', `	
-            <input
-                type="text"
-                style=" max-width: ${previewHookWidth}px; 
-                        max-height: ${previewHookHeight}px; 
-                        display: inline;
-                        white-space: nowrap;"
-                onfocus="window.onPreviewInputFocus('${field.templateStr}');"
-            />
-        `);
+        const newInputElement = document.createElement('input');
+        newInputElement.style.maxWidth = previewHookWidth + 'px';
+        newInputElement.style.maxHeight = previewHookHeight + 'px';
+        newInputElement.style.display = 'inline';
+        newInputElement.style.whiteSpace = 'nowrap';
+        newInputElement.onfocus = () => {
+            window.onPreviewInputFocus(field);
+        };
+        previewHook.insertAdjacentElement('afterbegin', newInputElement);
     }
-    // const { dbMappedColumn } = field;
-    // if (dbMappedColumn.sys_id || dbMappedColumn.isEnumerated) {
-    //     targetNode.style.backgroundColor = 'green';
-    // } else {
-    //     targetNode.style.backgroundColor = 'yellow';
-    // }
 }
 
 

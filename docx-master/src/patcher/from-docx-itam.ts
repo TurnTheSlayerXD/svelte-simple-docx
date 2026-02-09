@@ -8,7 +8,7 @@ import { DocumentAttributeNamespaces } from "@file/document";
 import { IViewWrapper } from "@file/document-wrapper";
 import { File } from "@file/file";
 import { Media } from "@file/media";
-import { TextRun } from "@file/paragraph";
+import { ConcreteHyperlink, ExternalHyperlink, ImageRun, TextRun } from "@file/paragraph";
 import { TargetModeType } from "@file/relationships/relationship/relationship";
 import { IContext } from "@file/xml-components";
 import { OutputByType } from "@util/output-type";
@@ -18,6 +18,7 @@ import { appendRelationship, getNextRelationshipIndex } from "./relationship-man
 import { toJson } from "./util";
 import { compareByteArrays, createRelationshipFile, IHyperlinkRelationshipAddition, IImageRelationshipAddition, imageReplacer, InputDataType, IPatch, patchDocument, PatchDocumentOutputType, PatchType, toXml, UTF16BE, UTF16LE } from "./from-docx";
 import { arrayReplacer, copyAppendRowsToTable, IRowWithRepeat, underlineReplacer } from "./replacer";
+import { readFileSync } from "fs";
 
 // eslint-disable-next-line functional/prefer-readonly-type
 
@@ -112,7 +113,6 @@ export const regexPatchDocument = <T extends PatchDocumentOutputType = PatchDocu
 
             let recursionCount = 0;
             while (true) {
-
                 const { didFindOccurrence } = underlineReplacer({
                     json,
                     patchGenerator,
@@ -231,8 +231,10 @@ export class PatchGenerator {
 
     nextPatch(sourceString: string): PatchGeneratorReturnType {
         const newPatchStr = `{{field_${this.i++}}}`;
+        const patch = { type: PatchType.PARAGRAPH, children: [new TextRun({ text: newPatchStr })] };
+
         const createdPatch: PatchGeneratorReturnType = {
-            patch: { type: PatchType.PARAGRAPH, children: [new TextRun(newPatchStr)] },
+            patch,
             parentTableElementRef: null,
             parentRowElementRef: null,
             patchString: newPatchStr,
@@ -256,13 +258,12 @@ export type ProcessingTemplateResult = {
     rowGroupId: number,
 };
 
-export async function ITAM_processFileAndFindPlacesToReplace(blob: any): Promise<any> {
-
+export function ITAM_processFileAndFindPlacesToReplace(blob: any): any {
     try {
         const patchGenerator = new PatchGenerator();
         const outputBlob = regexPatchDocument(
             {
-                outputType: "base64",
+                outputType: "uint8array",
                 data: blob,
                 patchGenerator,
                 recursion: { is_recursive: true, max_recursion: 100 },
@@ -302,9 +303,12 @@ export async function ITAM_processFileAndFindPlacesToReplace(blob: any): Promise
     }
 }
 
+export type RowPartOfType = { isRowData: false, replacementString: string } | { isRowData: true, replacements: string[], rowGroupId: number };
+export type LinkPartOfType = { isLink?: false } | { isLink?: true, href: string }
+export type ImagePartOfType = { isImage?: false } | { isImage?: true, imageData: Uint8Array }
+
 export type TypeToReplaceTemplates = {
-    templateString: string, replacementData:
-    { isRowData: false, replacementString: string } | { isRowData: true, replacements: string[], rowGroupId: number }
+    templateString: string, replacementData: RowPartOfType & LinkPartOfType & ImagePartOfType
 };
 
 export function ITAM_replaceTemplateFieldsInDocxAndGetOutputBuffer(patches: TypeToReplaceTemplates[], inputArrayBuffer: any): any {
@@ -367,11 +371,45 @@ export function ITAM_replaceTemplateFieldsInDocxAndGetOutputBuffer(patches: Type
     const notRowPatches: Record<string, IPatch> = {};
     for (const p of patches) {
         if (!p.replacementData.isRowData) {
-            notRowPatches[p.templateString] = { type: PatchType.PARAGRAPH, children: [new TextRun(p.replacementData.replacementString)] };
+            if (p.replacementData.isImage) {
+                const imageRun = new ImageRun({
+                    data: p.replacementData.imageData,
+                    // fallback: { data: "", type: "jpg" },
+                    transformation: { width: 100, height: 100 },
+                    type: "jpeg" as any,
+                    altText: { name: "none" },
+                    // data: fs.readFileSync("./demo/images/image1.jpeg"),
+                    // transformation: {
+                    //     width: 100,
+                    //     height: 100,
+                    // },
+                });
+                notRowPatches[p.templateString] = {
+                    type: PatchType.PARAGRAPH,
+                    children: [imageRun]
+                };
+            }
+            else if (p.replacementData.isLink) {
+                notRowPatches[p.templateString] = {
+                    type: PatchType.PARAGRAPH,
+                    children: [new ExternalHyperlink({
+                        children: [new TextRun({
+                            text: p.replacementData.replacementString,
+                            color: "0000FF",
+                            style: "hyperlink",
+                            underline: { color: "0000FF", type: "single" }
+                        })],
+                        link: "http://simple.test"
+                    })]
+                };
+            }
+            else {
+                notRowPatches[p.templateString] = { type: PatchType.PARAGRAPH, children: [new TextRun(p.replacementData.replacementString)] };
+            }
         }
     }
     const output = patchDocument(
-        { outputType: "base64", data: inputArrayBuffer, patches: notRowPatches, keepOriginalStyles: true, recursive: true },
+        { outputType: "uint8array", data: inputArrayBuffer, patches: notRowPatches, keepOriginalStyles: true, recursive: true },
         [appendRowsCallback, replaceRowDataCallback]);
     return output;
 }

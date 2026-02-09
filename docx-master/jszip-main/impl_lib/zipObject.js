@@ -104,7 +104,6 @@ ZipObject.prototype = {
         const isUnicodeString = !this._dataBinary;
 
         let result = this._data.compressedContent;
-        console.log("this._data", this._data);
 
         if (!result?.length) {
             if (outType === "uint8array") {

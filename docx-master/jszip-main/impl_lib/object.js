@@ -374,7 +374,6 @@ var out = {
      */
     generateAsync: async function (options, onUpdate) {
         const stream = this.generateInternalStream(options);
-        printRecursive(stream);
         return await stream.accumulate(onUpdate);
     },
     /**
@@ -633,12 +632,3 @@ var out = {
 
 };
 module.exports = out;
-
-
-function printRecursive(str) {
-    let worker = str._worker;
-    while (worker) {
-        console.log(worker.name);
-        worker = worker.previous;
-    }
-}

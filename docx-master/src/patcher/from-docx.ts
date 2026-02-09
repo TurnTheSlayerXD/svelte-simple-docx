@@ -137,9 +137,6 @@ export const patchDocument = <T extends PatchDocumentOutputType = PatchDocumentO
         }
 
         if (key.startsWith("word/") && !key.endsWith(".xml.rels")) {
-
-
-
             const context: IContext = {
                 file,
                 viewWrapper: {
